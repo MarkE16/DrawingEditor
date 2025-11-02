@@ -19,7 +19,7 @@ const exampleStore: SliceStores = {
 	dpi: 1,
 	color: "#000000",
 	scale: 1,
-	position: { x: 0, y: 0 },
+	position: [0, 0],
 	layers: [
 		{ name: "Layer 1", id: expect.any(String), active: true, hidden: false }
 	],
@@ -291,28 +291,28 @@ describe("useStore functionality", () => {
 			act(() => {
 				result.result.current.changeX(5);
 			});
-			expect(result.result.current.position.x).toBe(5);
+			expect(result.result.current.position[0]).toBe(5);
 		});
 
 		it("should decrease the X position by 5", () => {
 			act(() => {
 				result.result.current.changeX(-5);
 			});
-			expect(result.result.current.position.x).toBe(-5);
+			expect(result.result.current.position[0]).toBe(-5);
 		});
 
 		it("should increase the Y position by 5", () => {
 			act(() => {
 				result.result.current.changeY(5);
 			});
-			expect(result.result.current.position.y).toBe(5);
+			expect(result.result.current.position[1]).toBe(5);
 		});
 
 		it("should decrease the Y position by 5", () => {
 			act(() => {
 				result.result.current.changeY(-5);
 			});
-			expect(result.result.current.position.y).toBe(-5);
+			expect(result.result.current.position[1]).toBe(-5);
 		});
 
 		it("should return the initial DPI", () => {
