@@ -100,6 +100,8 @@ export type HistoryStore = {
 	pushHistory: (action: HistoryAction) => void;
 	undo: () => void;
 	redo: () => void;
+	canUndo: () => boolean;
+	canRedo: () => boolean;
 	clearHistory: () => void;
 };
 

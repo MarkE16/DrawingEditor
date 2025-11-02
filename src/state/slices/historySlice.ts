@@ -40,11 +40,10 @@ export const createHistorySlice: StateCreator<
 							if (state.type === "brush" || state.type === "eraser") {
 								return {
 									...state,
-									path: state.path.map((point) => ({
-										...point,
-										x: point.x - dx / scale,
-										y: point.y - dy / scale
-									}))
+									path: state.path.map((point) => [
+										point[0] - dx / scale,
+										point[1] - dy / scale
+									])
 								};
 							}
 							return {
@@ -58,11 +57,10 @@ export const createHistorySlice: StateCreator<
 						if (state.type === "brush" || state.type === "eraser") {
 							return {
 								...state,
-								path: state.path.map((point) => ({
-									...point,
-									x: point.x + dx / scale,
-									y: point.y + dy / scale
-								}))
+								path: state.path.map((point) => [
+									point[0] + dx / scale,
+									point[1] + dy / scale
+								])
 							};
 						}
 						return {
@@ -120,6 +118,14 @@ export const createHistorySlice: StateCreator<
 		});
 	}
 
+	function canUndo() {
+		return get().undoStack.length > 0;
+	}
+
+	function canRedo() {
+		return get().redoStack.length > 0;
+	}
+
 	function clearHistory() {
 		set({
 			undoStack: [],
@@ -133,6 +139,8 @@ export const createHistorySlice: StateCreator<
 		pushHistory,
 		undo,
 		redo,
+		canUndo,
+		canRedo,
 		clearHistory
 	};
 };

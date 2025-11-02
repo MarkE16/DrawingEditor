@@ -1,11 +1,5 @@
 // Lib
-import {
-	forwardRef,
-	useEffect,
-	useImperativeHandle,
-	useMemo,
-	useRef
-} from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { parseColor } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 import useStoreSubscription from "@/state/hooks/useStoreSubscription";
@@ -13,10 +7,11 @@ import useStore from "@/state/hooks/useStore";
 import useThrottle from "@/state/hooks/useThrottle";
 import useCanvasRedrawListener from "@/state/hooks/useCanvasRedrawListener";
 import useCanvasRef from "@/state/hooks/useCanvasRef";
-import { redrawCanvas } from "@/lib/utils";
+import { redrawCanvas, updateVector2 } from "@/lib/utils";
 import ElementsStore from "@/state/stores/ElementsStore";
 import LayersStore from "@/state/stores/LayersStore";
 import ImageElementStore from "@/state/stores/ImageElementStore";
+import useStoreContext from "@/state/hooks/useStoreContext";
 
 // Types
 import type {
@@ -24,8 +19,7 @@ import type {
 	MouseEvent as ReactMouseEvent,
 	SetStateAction
 } from "react";
-import { type Coordinates, CanvasElementPath } from "@/types";
-import useStoreContext from "@/state/hooks/useStoreContext";
+import { CanvasElementPath, Vector } from "@/types";
 
 type CanvasProps = {
 	setLoading: Dispatch<SetStateAction<boolean>>;
@@ -81,10 +75,7 @@ const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(function Canvas(
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const currentPath2D = useRef<Path2D>(null);
 	const currentPath = useRef<CanvasElementPath[]>([]);
-	const initialPosition = useRef<Coordinates>({
-		x: 0,
-		y: 0
-	});
+	const initialPosition = useRef<Vector<2>>([0, 0]);
 
 	// Handler for when the mouse is pressed down on the canvas.
 	// This should initiate the drawing process.
@@ -114,7 +105,7 @@ const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(function Canvas(
 		const floorY = Math.floor(y);
 
 		if (!isDrawing.current) {
-			initialPosition.current = { x: floorX, y: floorY };
+			updateVector2(initialPosition.current, floorX, floorY);
 		}
 		const activeLayer = getActiveLayer();
 		isDrawing.current = !activeLayer.hidden;
@@ -123,7 +114,7 @@ const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(function Canvas(
 			currentPath2D.current = new Path2D();
 			currentPath2D.current.moveTo(floorX, floorY);
 			// Save the current path.
-			currentPath.current.push({ x: floorX, y: floorY, startingPoint: true });
+			currentPath.current.push([floorX, floorY]);
 		} else if (mode === "eye_drop") {
 			// `getPointerPosition` gives us the position in world coordinates,
 			// but we need the position in canvas coordinates for `getImageData`.
@@ -175,42 +166,35 @@ const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(function Canvas(
 		switch (mode) {
 			case "brush":
 			case "eraser": {
-			const lastPoint = currentPath.current[currentPath.current.length - 1];
-				const midPointX = lastPoint.x + (floorX - lastPoint.x) / 2;
-				const midPointY = lastPoint.y + (floorY - lastPoint.y) / 2;
-				
-        currentPath2D.current.quadraticCurveTo(
-          lastPoint.x,
-          lastPoint.y,
-          midPointX,
-          midPointY
-        );
+				const lastPoint = currentPath.current[currentPath.current.length - 1];
+				const lastPointX = lastPoint[0];
+				const lastPointY = lastPoint[1];
+				const midPointX = lastPointX + (floorX - lastPointX) / 2;
+				const midPointY = lastPointY + (floorY - lastPointY) / 2;
+
+				currentPath2D.current.quadraticCurveTo(
+					lastPointX,
+					lastPointY,
+					midPointX,
+					midPointY
+				);
 				ctx.stroke(currentPath2D.current);
 
-				currentPath.current.push({
-					x: floorX,
-					y: floorY,
-					startingPoint: false
-				});
+				currentPath.current.push([floorX, floorY]);
 
 				drawPaperCanvas(ctx, 0, 0);
 				break;
 			}
 
 			case "shapes": {
+				const initX = initialPosition.current[0];
+				const initY = initialPosition.current[1];
+				const width = x - initX;
+				const height = y - initY;
 				if (shape === "circle") {
-					const width = x - initialPosition.current.x;
-					const height = y - initialPosition.current.y;
-
 					currentPath2D.current.ellipse(
-						Math.min(
-							x + Math.abs(width) / 2,
-							initialPosition.current.x + Math.abs(width) / 2
-						),
-						Math.min(
-							y + Math.abs(height) / 2,
-							initialPosition.current.y + Math.abs(height) / 2
-						),
+						Math.min(x + Math.abs(width) / 2, initX + Math.abs(width) / 2),
+						Math.min(y + Math.abs(height) / 2, initY + Math.abs(height) / 2),
 						Math.abs(width) / 2,
 						Math.abs(height) / 2,
 						0,
@@ -218,29 +202,11 @@ const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(function Canvas(
 						Math.PI * 2
 					);
 				} else if (shape === "rectangle") {
-					const width = x - initialPosition.current.x;
-					const height = y - initialPosition.current.y;
-					currentPath2D.current.rect(
-						initialPosition.current.x,
-						initialPosition.current.y,
-						width,
-						height
-					);
+					currentPath2D.current.rect(initX, initY, width, height);
 				} else if (shape === "triangle") {
-					const width = x - initialPosition.current.x;
-					const height = y - initialPosition.current.y;
-					currentPath2D.current.moveTo(
-						initialPosition.current.x + width / 2,
-						initialPosition.current.y
-					);
-					currentPath2D.current.lineTo(
-						initialPosition.current.x,
-						initialPosition.current.y + height
-					);
-					currentPath2D.current.lineTo(
-						initialPosition.current.x + width,
-						initialPosition.current.y + height
-					);
+					currentPath2D.current.moveTo(initX + width / 2, initY);
+					currentPath2D.current.lineTo(initX, initY + height);
+					currentPath2D.current.lineTo(initX + width, initY + height);
 				}
 
 				currentPath2D.current.closePath();
@@ -279,7 +245,7 @@ const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(function Canvas(
 		if (!ctx) throw new Error("Couldn't get the 2D context of the canvas.");
 
 		const { x, y } = getPointerPosition(canvas, e.clientX, e.clientY);
-		const { x: initX, y: initY } = initialPosition.current;
+		const [initX, initY] = initialPosition.current;
 
 		let elementType;
 		let elementPayload;
@@ -306,7 +272,7 @@ const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(function Canvas(
 
 		const properties = createElement(elementType, elementPayload);
 
-		initialPosition.current = { x: 0, y: 0 };
+		updateVector2(initialPosition.current, 0, 0);
 
 		pushHistory({
 			type: "add_element",
@@ -324,9 +290,7 @@ const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(function Canvas(
 
 	useImperativeHandle(ref, () => canvasRef.current!, []);
 
-	const debounceRedraw = useMemo(() => false, []);
-
-	useCanvasRedrawListener(canvasRef, undefined, debounceRedraw);
+	useCanvasRedrawListener(canvasRef);
 
 	useEffect(() => {
 		document.addEventListener("mousemove", onMouseMove);

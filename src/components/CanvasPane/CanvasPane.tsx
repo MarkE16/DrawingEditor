@@ -3,7 +3,7 @@ import { useRef, useEffect, useState, memo } from "react";
 import useStore from "@/state/hooks/useStore";
 import useStoreSubscription from "@/state/hooks/useStoreSubscription";
 import { useShallow } from "zustand/react/shallow";
-import { redrawCanvas } from "@/lib/utils";
+import { redrawCanvas, updateVector2 } from "@/lib/utils";
 
 // Components
 import DrawingToolbar from "@/components/DrawingToolbar/DrawingToolbar";
@@ -13,7 +13,7 @@ import ScaleIndicator from "@/components/ScaleIndicator/ScaleIndicator";
 
 // Types
 import type { ReactNode } from "react";
-import type { Coordinates } from "@/types";
+import type { Vector } from "@/types";
 
 const MemoizedCanvas = memo(Canvas);
 const MemoizedDrawingToolbar = memo(DrawingToolbar);
@@ -45,8 +45,8 @@ function CanvasPane(): ReactNode {
 	);
 	const currentShape = useStoreSubscription((state) => state.shape);
 	const currentColor = useStoreSubscription((state) => state.color);
-	const clientPosition = useRef<Coordinates>({ x: 0, y: 0 });
-	const startMovePosition = useRef<Coordinates>({ x: 0, y: 0 });
+	const clientPosition = useRef<Vector<2>>([0, 0]);
+	const startMovePosition = useRef<Vector<2>>([0, 0]);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const [loading, setLoading] = useState<boolean>(true);
 
@@ -64,8 +64,8 @@ function CanvasPane(): ReactNode {
 		function handleMouseDown(e: MouseEvent) {
 			if (e.buttons !== 1) return;
 
-			clientPosition.current = { x: e.clientX, y: e.clientY };
-			startMovePosition.current = { x: e.clientX, y: e.clientY };
+			clientPosition.current = [e.clientX, e.clientY];
+			startMovePosition.current = [e.clientX, e.clientY];
 		}
 
 		function handleMouseMove(e: MouseEvent) {
@@ -75,8 +75,10 @@ function CanvasPane(): ReactNode {
 			const layer = getActiveLayer();
 			if (!canvas || layer.hidden) return;
 
-			let dx = e.clientX - clientPosition.current.x;
-			let dy = e.clientY - clientPosition.current.y;
+			const initX = clientPosition.current[0];
+			const initY = clientPosition.current[1];
+			let dx = e.clientX - initX;
+			let dy = e.clientY - initY;
 
 			if (isPanning) {
 				// TODO: Have to revisit the calculation to know how the canvas is considered off screen.
@@ -103,11 +105,7 @@ function CanvasPane(): ReactNode {
 						if (state.type === "brush" || state.type === "eraser") {
 							return {
 								...state,
-								path: state.path.map((point) => ({
-									...point,
-									x: point.x + dx,
-									y: point.y + dy
-								}))
+								path: state.path.map((point) => [point[0] + dx, point[1] + dy])
 							};
 						} else {
 							return {
@@ -121,13 +119,15 @@ function CanvasPane(): ReactNode {
 				);
 				redrawCanvas();
 			}
-			clientPosition.current = { x: e.clientX, y: e.clientY };
+			updateVector2(clientPosition.current, e.clientX, e.clientY);
 		}
 
 		function handleMouseUp(e: MouseEvent) {
 			if (isMoving && isClickingOnSpace(e)) {
-				const dx = e.clientX - startMovePosition.current.x; // total change in x
-				const dy = e.clientY - startMovePosition.current.y; // total change in y
+				const initX = startMovePosition.current[0];
+				const initY = startMovePosition.current[1];
+				const dx = e.clientX - initX; // total change in x
+				const dy = e.clientY - initY; // total change in y
 
 				const layer = getActiveLayer();
 

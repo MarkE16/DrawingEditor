@@ -9,14 +9,15 @@ import type {
 	ReactNode,
 	MouseEvent as ReactMouseEvent
 } from "react";
-import type { Coordinates } from "@/types";
+import type { Vector } from "@/types";
 
 // Icons
 import Close from "@/components/icons/Close/Close";
+import { updateVector2 } from "@/lib/utils";
 
 type ReferenceWindowHeaderProps = Readonly<{
 	isPinned: boolean;
-	setPosition: Dispatch<SetStateAction<Coordinates>>;
+	setPosition: Dispatch<SetStateAction<Vector<2>>>;
 	children: ReactNode;
 }>;
 
@@ -31,11 +32,12 @@ function ReferenceWindowHeader({
 
 	const isDraggingWindow = useRef<boolean>(false);
 	const headerRef = useRef<HTMLHeadingElement>(null);
-	const clientPosition = useRef<Coordinates>({ x: 0, y: 0 });
+	const clientPosition = useRef<Vector<2>>([0, 0]);
 
 	function handleMouseDown(e: ReactMouseEvent) {
 		isDraggingWindow.current = !isPinned;
-		clientPosition.current = { x: e.clientX, y: e.clientY };
+
+		updateVector2(clientPosition.current, e.clientX, e.clientY);
 	}
 
 	useEffect(() => {
@@ -49,23 +51,24 @@ function ReferenceWindowHeader({
 
 			const x = e.clientX;
 			const y = e.clientY;
+			const [prevClientX, prevClientY] = clientPosition.current;
 
-			const dx = x - clientPosition.current.x;
-			const dy = y - clientPosition.current.y;
+			const dx = x - prevClientX;
+			const dy = y - prevClientY;
 
-			setPosition((prev) => ({
-				...prev,
-				x: Math.min(
-					Math.max(prev.x + dx, 0),
+			setPosition((prev) => {
+				const nextX = Math.min(
+					Math.max(prev[0] + dx, 0),
 					window.innerWidth - header.offsetWidth
-				),
-				y: Math.min(
-					Math.max(prev.y + dy, 0),
+				);
+				const nextY = Math.min(
+					Math.max(prev[1] + dy, 0),
 					window.innerHeight - header.offsetHeight
-				)
-			}));
+				);
+				return [nextX, nextY];
+			});
 
-			clientPosition.current = { x, y };
+			updateVector2(clientPosition.current, x, y);
 		}
 
 		document.addEventListener("mousemove", handleMouseMove);

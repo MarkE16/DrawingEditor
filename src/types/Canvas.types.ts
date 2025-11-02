@@ -14,7 +14,7 @@ export type CanvasState = {
 	currentLayer: number;
 	scale: number;
 	dpi: number;
-	position: Coordinates;
+	position: Vector<2>;
 	referenceWindowEnabled: boolean;
 };
 
@@ -69,10 +69,13 @@ export type FontProperties = {
 	content: string;
 };
 
-export type CanvasElementPath = Coordinates & {
-	// Indicates if the path is the starting point of the element.
-	startingPoint: boolean;
-};
+type BuildTuple<
+	L extends number,
+	T extends unknown[] = []
+> = T["length"] extends L ? T : BuildTuple<L, [...T, T[number]]>;
+
+export type Vector<N extends number> = BuildTuple<N, [number]>;
+export type CanvasElementPath = Vector<2>;
 
 export type CanvasElement = {
 	x: number;

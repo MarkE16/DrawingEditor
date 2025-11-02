@@ -3,10 +3,9 @@ import { useState, useEffect, useRef } from "react";
 import useStore from "@/state/hooks/useStore";
 import { useShallow } from "zustand/react/shallow";
 
-
 // Types
 import type { ReactNode, RefObject } from "react";
-import type { Coordinates } from "@/types";
+import type { Vector } from "@/types";
 
 type CanvasPointerMarker = {
 	canvasSpaceReference: RefObject<HTMLCanvasElement | null>;
@@ -22,7 +21,9 @@ function CanvasPointerMarker({
 		}))
 	);
 	const ref = useRef<HTMLDivElement>(null);
-	const [position, setPosition] = useState<Coordinates>({ x: 0, y: 0 });
+	const [position, setPosition] = useState<Vector<2>>([0, 0]);
+	const positionX = position[0];
+	const positionY = position[1];
 
 	const POINTER_SIZE = strokeWidth * scale;
 
@@ -62,7 +63,7 @@ function CanvasPointerMarker({
 				newY = computedY;
 			}
 
-			setPosition({ x: newX, y: newY });
+			setPosition([newX, newY]);
 		}
 
 		document.addEventListener("mousemove", computeCoordinates);
@@ -82,7 +83,7 @@ function CanvasPointerMarker({
 				borderRadius: "50%",
 				left: -POINTER_SIZE,
 				top: -POINTER_SIZE,
-				transform: `translate(${position.x}px, ${position.y}px)`,
+				transform: `translate(${positionX}px, ${positionY}px)`,
 				zIndex: 100,
 				width: POINTER_SIZE,
 				height: POINTER_SIZE,
