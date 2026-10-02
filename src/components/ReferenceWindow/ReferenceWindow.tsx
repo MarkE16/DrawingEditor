@@ -9,7 +9,8 @@ import ReferenceWindowControls from "@/components/ReferenceWindowControls/Refere
 
 // Types
 import type { CSSProperties, ReactNode } from "react";
-import { Coordinates } from "@/types";
+import { Vector } from "@/types";
+import { updateVector2 } from "@/lib/utils";
 
 const MemoizedReferenceWindowHeader = memo(ReferenceWindowHeader);
 const MemoizedReferenceWindowContent = memo(ReferenceWindowContent);
@@ -26,7 +27,8 @@ function ReferenceWindow(): ReactNode {
 	const [scale, setScale] = useState<number>(50);
 	const windowRef = useRef<HTMLDivElement>(null);
 
-	const [position, setPosition] = useState<Coordinates>(() => {
+	const [position, setPosition] = useState<Vector<2>>(() => {
+		const pos: Vector<2> = [0, 0];
 		if (typeof window !== "undefined") {
 			const { innerWidth, innerHeight } = window;
 
@@ -35,28 +37,24 @@ function ReferenceWindow(): ReactNode {
 			if (windowRefCurrent) {
 				const { offsetWidth, offsetHeight } = windowRefCurrent;
 
-				return {
-					x: (innerWidth - offsetWidth) / 2,
-					y: (innerHeight - offsetHeight) / 2
-				};
+				updateVector2(
+					pos,
+					(innerWidth - offsetWidth) / 2,
+					(innerHeight - offsetHeight) / 2
+				);
+			} else {
+				updateVector2(pos, innerWidth / 2, innerHeight / 2);
 			}
-
-			return {
-				x: innerWidth / 2,
-				y: innerHeight / 2
-			};
 		}
-
-		return {
-			x: 0,
-			y: 0
-		};
+		return pos;
 	});
+	const positionX = position[0];
+	const positionY = position[1];
 
 	const styles: CSSProperties = !pinned
 		? {
-				left: position.x,
-				top: position.y
+				left: positionX,
+				top: positionY
 			}
 		: {
 				left: 0,

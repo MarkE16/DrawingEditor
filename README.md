@@ -1,4 +1,5 @@
 DrawingEditor
+Drawing Editor
 
 ## 🤠 Features 
 

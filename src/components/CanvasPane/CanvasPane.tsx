@@ -3,6 +3,7 @@ import { useRef, useEffect, useState, memo } from "react";
 import useStore from "@/state/hooks/useStore";
 import useStoreSubscription from "@/state/hooks/useStoreSubscription";
 import { useShallow } from "zustand/react/shallow";
+import { redrawCanvas, updateVector2 } from "@/lib/utils";
 
 // Components
 import DrawingToolbar from "@/components/DrawingToolbar/DrawingToolbar";
@@ -12,18 +13,13 @@ import ScaleIndicator from "@/components/ScaleIndicator/ScaleIndicator";
 
 // Types
 import type { ReactNode } from "react";
-import type { Coordinates } from "@/types";
-import { redrawCanvas } from "@/lib/utils";
+import type { Vector } from "@/types";
 
 const MemoizedCanvas = memo(Canvas);
 const MemoizedDrawingToolbar = memo(DrawingToolbar);
 const MemoizedScaleIndicator = memo(ScaleIndicator);
 
-type CanvasPaneProps = Readonly<{
-	loading?: boolean;
-}>;
-
-function CanvasPane({ loading }: CanvasPaneProps): ReactNode {
+function CanvasPane(): ReactNode {
 	const {
 		mode,
 		scale,
@@ -49,16 +45,10 @@ function CanvasPane({ loading }: CanvasPaneProps): ReactNode {
 	);
 	const currentShape = useStoreSubscription((state) => state.shape);
 	const currentColor = useStoreSubscription((state) => state.color);
-	const canvasSpaceRef = useRef<HTMLDivElement>(null);
-	const clientPosition = useRef<Coordinates>({ x: 0, y: 0 });
-	const startMovePosition = useRef<Coordinates>({ x: 0, y: 0 });
-	const [shiftKey, setShiftKey] = useState<boolean>(false);
-	const [ctrlKey, setCtrlKey] = useState<boolean>(false);
-	const [isGrabbing, setIsGrabbing] = useState<boolean>(false);
+	const clientPosition = useRef<Vector<2>>([0, 0]);
+	const startMovePosition = useRef<Vector<2>>([0, 0]);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-	const isPanning = mode === "pan";
-	const isMoving = mode === "move";
+	const [loading, setLoading] = useState<boolean>(true);
 
 	// Effect is getting ugly... Might be a good idea to split
 	// this into multiple effects.
@@ -66,57 +56,31 @@ function CanvasPane({ loading }: CanvasPaneProps): ReactNode {
 		const canvasSpace = canvasRef.current;
 		if (!canvasSpace) return;
 
+		const isPanning = mode === "pan";
+		const isMoving = mode === "move";
 		const isClickingOnSpace = (e: MouseEvent) =>
 			e.target === canvasSpace || canvasSpace.contains(e.target as Node);
 
 		function handleMouseDown(e: MouseEvent) {
 			if (e.buttons !== 1) return;
 
-			clientPosition.current = { x: e.clientX, y: e.clientY };
-			startMovePosition.current = { x: e.clientX, y: e.clientY };
-			const isOnCanvas = isClickingOnSpace(e);
-
-			if (!isOnCanvas) return;
-
-			if (
-				mode === "text" &&
-				!shiftKey &&
-				!document.activeElement?.classList.contains("element") &&
-				!document.activeElement?.classList.contains("grid") &&
-				!document.activeElement?.classList.contains("handle")
-			) {
-				const layer = getActiveLayer();
-
-				if (!layer) throw new Error("No active layer found");
-
-				createElement("text", {
-					x: e.clientX,
-					y: e.clientY,
-					width: 100,
-					height: 30,
-					text: {
-						size: 25,
-						family: "Times New Roman",
-						content: "Text"
-					},
-					layerId: layer.id
-				});
-				return;
-			}
-			setIsGrabbing(isOnCanvas);
+			clientPosition.current = [e.clientX, e.clientY];
+			startMovePosition.current = [e.clientX, e.clientY];
 		}
 
 		function handleMouseMove(e: MouseEvent) {
-			if (e.buttons !== 1 || !isGrabbing) return;
+			if (e.buttons !== 1) return;
 
 			const canvas = canvasRef.current;
 			const layer = getActiveLayer();
 			if (!canvas || layer.hidden) return;
 
-			let dx = e.clientX - clientPosition.current.x;
-			let dy = e.clientY - clientPosition.current.y;
+			const initX = clientPosition.current[0];
+			const initY = clientPosition.current[1];
+			let dx = e.clientX - initX;
+			let dy = e.clientY - initY;
 
-			if (isPanning && isGrabbing) {
+			if (isPanning) {
 				// TODO: Have to revisit the calculation to know how the canvas is considered off screen.
 				// As a temporary solution, a button in the left toolbar pane is added to reset the canvas view.
 				// const { left, top } = isCanvasOffscreen(canvas, dx, dy);
@@ -141,11 +105,7 @@ function CanvasPane({ loading }: CanvasPaneProps): ReactNode {
 						if (state.type === "brush" || state.type === "eraser") {
 							return {
 								...state,
-								path: state.path.map((point) => ({
-									...point,
-									x: point.x + dx,
-									y: point.y + dy
-								}))
+								path: state.path.map((point) => [point[0] + dx, point[1] + dy])
 							};
 						} else {
 							return {
@@ -159,13 +119,15 @@ function CanvasPane({ loading }: CanvasPaneProps): ReactNode {
 				);
 				redrawCanvas();
 			}
-			clientPosition.current = { x: e.clientX, y: e.clientY };
+			updateVector2(clientPosition.current, e.clientX, e.clientY);
 		}
 
 		function handleMouseUp(e: MouseEvent) {
 			if (isMoving && isClickingOnSpace(e)) {
-				const dx = e.clientX - startMovePosition.current.x; // total change in x
-				const dy = e.clientY - startMovePosition.current.y; // total change in y
+				const initX = startMovePosition.current[0];
+				const initY = startMovePosition.current[1];
+				const dx = e.clientX - initX; // total change in x
+				const dy = e.clientY - initY; // total change in y
 
 				const layer = getActiveLayer();
 
@@ -178,20 +140,20 @@ function CanvasPane({ loading }: CanvasPaneProps): ReactNode {
 					}
 				});
 			}
-			setIsGrabbing(false);
-		}
-
-		function handleKeyDown(e: KeyboardEvent) {
-			setShiftKey(e.shiftKey);
-			setCtrlKey(e.ctrlKey);
 		}
 
 		function handleZoom(e: Event) {
 			if (!canvasSpace) return;
 
 			if (e instanceof WheelEvent) {
-				console.log(e.deltaY);
-				performZoom(e.clientX, e.clientY, e.deltaY / 10);
+				if (e.ctrlKey) {
+					// Ctrl key means we are zooming.
+					e.preventDefault();
+					performZoom(e.clientX, e.clientY, e.deltaY / 10);
+				} else if (e.shiftKey) {
+					// Shift key means we are panning horizontally.
+					changeX(-e.deltaY);
+				}
 				// Handle the click event
 			} else if (e instanceof MouseEvent) {
 				if (!isClickingOnSpace(e)) return;
@@ -218,32 +180,20 @@ function CanvasPane({ loading }: CanvasPaneProps): ReactNode {
 		document.addEventListener("wheel", handleZoom);
 		document.addEventListener("click", handleZoom);
 
-		// Handle shift key press
-		document.addEventListener("keydown", handleKeyDown);
-		document.addEventListener("keyup", handleKeyDown);
-
 		return () => {
 			document.removeEventListener("mousedown", handleMouseDown);
 			document.removeEventListener("mousemove", handleMouseMove);
 			document.removeEventListener("mouseup", handleMouseUp);
 			document.removeEventListener("wheel", handleZoom);
 			document.removeEventListener("click", handleZoom);
-
-			document.removeEventListener("keydown", handleKeyDown);
-			document.removeEventListener("keyup", handleKeyDown);
 		};
 	}, [
 		mode,
-		isMoving,
-		isPanning,
-		isGrabbing,
 		changeElementProperties,
 		createElement,
 		changeX,
 		changeY,
 		getActiveLayer,
-		shiftKey,
-		ctrlKey,
 		currentShape,
 		currentColor,
 		pushHistory,
@@ -257,15 +207,12 @@ function CanvasPane({ loading }: CanvasPaneProps): ReactNode {
 			data-testid="canvas-pane"
 		>
 			{(mode === "brush" || mode == "eraser") && (
-				<CanvasPointerMarker
-					canvasSpaceReference={canvasSpaceRef}
-					shiftKey={shiftKey}
-				/>
+				<CanvasPointerMarker canvasSpaceReference={canvasRef} />
 			)}
 			<MemoizedDrawingToolbar />
 
 			<MemoizedCanvas
-				isGrabbing={isMoving || isPanning}
+				setLoading={setLoading}
 				ref={canvasRef}
 			/>
 

@@ -3,7 +3,6 @@ import useStore from "./useStore";
 import useThrottle from "./useThrottle";
 import useDebounceCallback from "./useDebounceCallback";
 import { CanvasRedrawEvent } from "@/types";
-import useCanvasRef from "./useCanvasRef";
 
 const DEBOUNCE_TIME_MS = 500;
 
@@ -26,19 +25,15 @@ function useCanvasRedrawListener(
 	preview: boolean = false
 ): void {
 	const drawCanvas = useStore((state) => state.drawCanvas);
-	const { ref } = useCanvasRef();
 
 	const draw = useCallback(
 		(canvas: HTMLCanvasElement, layerId?: string) => {
-			if (!ref) {
-				throw new Error("Canvas ref does not exist.");
-			}
-			drawCanvas(canvas, ref, { layerId, preview });
+			drawCanvas(canvas, canvas, { layerId, preview });
 			// requestAnimationFrame(() => {
 			// 	draw(canvas, layerId);
 			// });
 		},
-		[drawCanvas, preview, ref]
+		[drawCanvas, preview]
 	);
 
 	const handleCanvasRedraw = useThrottle((e: CanvasRedrawEvent) => {

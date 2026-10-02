@@ -10,8 +10,7 @@ import type {
 	Shape,
 	SliceStores,
 	DrawOptions,
-	CanvasElement,
-	CanvasState
+	CanvasElement
 } from "@/types";
 import * as Utils from "@/lib/utils";
 import ImageElementStore from "../stores/ImageElementStore";
@@ -173,48 +172,39 @@ export const createCanvasSlice: StateCreator<
 	}
 
 	function performZoom(clientX: number, clientY: number, factor: number) {
-		const { position, scale } = get();
+		const {
+			position: [posX, posY],
+			scale
+		} = get();
 		const localX = clientX;
 		const localY = clientY;
 
 		const newScale = scale + factor * -0.01;
 
-		const newX = localX - (localX - position.x) * (newScale / scale);
-		const newY = localY - (localY - position.y) * (newScale / scale);
+		const newX = localX - (localX - posX) * (newScale / scale);
+		const newY = localY - (localY - posY) * (newScale / scale);
 
 		set({
 			scale: Math.min(Math.max(newScale, 0.1), 3),
-			position: {
-				x: newX,
-				y: newY
-			}
+			position: [newX, newY]
 		});
 	}
 
 	function setPosition(payload: Partial<Coordinates>) {
 		set((state) => ({
-			position: {
-				x: payload.x ?? state.position.x,
-				y: payload.y ?? state.position.y
-			}
+			position: [payload.x ?? state.position[0], payload.y ?? state.position[1]]
 		}));
 	}
 
 	function changeX(payload: number) {
 		set((state) => ({
-			position: {
-				x: state.position.x + payload,
-				y: state.position.y
-			}
+			position: [state.position[0] + payload, state.position[1]]
 		}));
 	}
 
 	function changeY(payload: number) {
 		set((state) => ({
-			position: {
-				x: state.position.x,
-				y: state.position.y + payload
-			}
+			position: [state.position[0], state.position[1] + payload]
 		}));
 	}
 
@@ -233,33 +223,9 @@ export const createCanvasSlice: StateCreator<
 	 * layers and elements themselves.
 	 */
 	function prepareForSave(): SavedCanvasProperties {
-		const { layers, elements, width, height, background } = get();
-
-		window.localStorage.setItem(
-			"canvas-properties",
-			JSON.stringify({
-				width,
-				height,
-				background
-			})
-		);
+		const { layers, elements } = get();
 
 		return { layers, elements };
-	}
-
-	function loadCanvasProperties() {
-		const str = window.localStorage.getItem("canvas-properties");
-
-		if (!str) {
-			console.warn("Cannot load 'canvas-properties'");
-			return;
-		}
-
-		const { width, height, background } = JSON.parse(str) as Pick<
-			CanvasState,
-			"width" | "height" | "background"
-		>;
-		set({ width, height, background });
 	}
 
 	/**
@@ -356,10 +322,13 @@ export const createCanvasSlice: StateCreator<
 		clientX: number,
 		clientY: number
 	): Coordinates {
-		const { position, scale } = get();
+		const {
+			position: [posX, posY],
+			scale
+		} = get();
 		const rect = canvas.getBoundingClientRect();
-		const x = (clientX - rect.left - position.x) / scale;
-		const y = (clientY - rect.top - position.y) / scale;
+		const x = (clientX - rect.left - posX) / scale;
+		const y = (clientY - rect.top - posY) / scale;
 
 		return { x, y };
 	}
@@ -373,7 +342,7 @@ export const createCanvasSlice: StateCreator<
 		top: boolean;
 	} {
 		const { width: canvasWidth, height: canvasHeight, position, scale } = get();
-		const { x: posX, y: posY } = position;
+		const [posX, posY] = position;
 
 		const rect = canvas.getBoundingClientRect();
 
@@ -406,10 +375,7 @@ export const createCanvasSlice: StateCreator<
 		const posX = viewportWidth / 2 - canvasWidth / 2;
 		const posY = viewportHeight / 2 - canvasHeight / 2;
 		set({
-			position: {
-				x: posX,
-				y: posY
-			}
+			position: [posX, posY]
 		});
 	}
 
@@ -417,14 +383,13 @@ export const createCanvasSlice: StateCreator<
 		ctx: CanvasRenderingContext2D,
 		x: number,
 		y: number,
-		width: number,
-		height: number,
-		background: string,
 		preview: boolean = false
 	) {
+		const { width, height, background } = get();
 		ctx.beginPath();
 		ctx.rect(x, y, width, height);
 		ctx.globalCompositeOperation = "destination-over";
+		ctx.globalAlpha = 1;
 
 		if (background === "transparent" && !preview) {
 			// If the background is transparent, fill with a checkerboard pattern.
@@ -466,13 +431,16 @@ export const createCanvasSlice: StateCreator<
 		options?: DrawOptions
 	) {
 		const {
+			mode,
 			elements,
-			background,
 			layers,
 			width: canvasWidth,
 			height: canvasHeight,
-			position: { x: posX, y: posY },
-			scale
+			position: [posX, posY],
+			scale,
+			opacity,
+			strokeWidth,
+			color
 		} = get();
 
 		if (layers.length === 0) {
@@ -551,11 +519,20 @@ export const createCanvasSlice: StateCreator<
 				case "brush":
 				case "eraser": {
 					ctx.beginPath();
-					for (const point of element.path) {
-						if (point.startingPoint) {
-							ctx.moveTo(point.x, point.y);
+					for (let i = 0; i < element.path.length; i++) {
+						const point = element.path[i];
+						const x = point[0];
+						const y = point[1];
+						if (i === 0) {
+							ctx.moveTo(x, y);
 						} else {
-							ctx.lineTo(point.x, point.y);
+							const lastPoint = element.path[i - 1];
+							const lastX = lastPoint[0];
+							const lastY = lastPoint[1];
+							// Add a quadratic curve for smoother lines
+							const midX = (lastX + x) / 2;
+							const midY = (lastY + y) / 2;
+							ctx.quadraticCurveTo(lastX, lastY, midX, midY);
 						}
 					}
 					ctx.stroke();
@@ -625,17 +602,22 @@ export const createCanvasSlice: StateCreator<
 		}
 
 		// Finally, draw the paper canvas (background)
-		drawPaperCanvas(
-			ctx,
-			0,
-			0,
-			canvasWidth,
-			canvasHeight,
-			background,
-			options?.preview
-		);
+		drawPaperCanvas(ctx, 0, 0, options?.preview);
 
 		ctx.restore();
+
+		// After drawing everything, reset the styles back to the current settings
+		// if not in preview mode. This is for the main canvas where the user draws,
+		// and we want to keep style settings persistent.
+		if (!options?.preview) {
+			ctx.globalAlpha = opacity;
+			ctx.strokeStyle = color;
+			ctx.fillStyle = color;
+			ctx.lineWidth = strokeWidth;
+			ctx.globalCompositeOperation =
+				mode === "eraser" ? "destination-out" : "source-over";
+			ctx.lineCap = "round";
+		}
 	}
 
 	function resetLayersAndElements() {
@@ -649,8 +631,7 @@ export const createCanvasSlice: StateCreator<
 		width: 400,
 		height: 400,
 		mode: "move",
-		// background: "#00FFFF",
-		background: "transparent",
+		background: "#ffffff",
 		shape: "rectangle",
 		shapeMode: "fill",
 		color: "#000000",
@@ -660,7 +641,7 @@ export const createCanvasSlice: StateCreator<
 		currentLayer: 0,
 		scale: 1,
 		dpi: 1,
-		position: { x: 0, y: 0 },
+		position: [0, 0], // => [x, y]
 		referenceWindowEnabled: false,
 		changeDimensions,
 		changeColor,
@@ -686,12 +667,12 @@ export const createCanvasSlice: StateCreator<
 		changeX,
 		changeY,
 		prepareForSave,
-		loadCanvasProperties,
 		prepareForExport,
 		toggleReferenceWindow,
 		getPointerPosition,
 		isCanvasOffscreen,
 		centerCanvas,
+		drawPaperCanvas,
 		drawCanvas,
 		resetLayersAndElements
 	};

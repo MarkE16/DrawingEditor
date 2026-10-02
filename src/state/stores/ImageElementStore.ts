@@ -75,11 +75,11 @@ export default class ImageElementStore extends BaseStore {
 	}
 
 	public static openStore() {
-		this.open();
+		return this.open();
 	}
 
 	public static closeStore() {
-		this.close();
+		return this.close();
 	}
 
 	public static clearStore() {

@@ -1,5 +1,5 @@
 // Lib
-import logo from "@/assets/icons/IdeaDrawnNewLogo_transparent.png";
+import logo from "@/assets/icons/IdeaDrawnNewLogo.png";
 import { useRef, useCallback, useEffect, useState } from "react";
 import { useShallow } from "zustand/shallow";
 import useStore from "@/state/hooks/useStore";
@@ -39,6 +39,9 @@ import {
 } from "@/components/ui/menubar";
 import NavbarFileSaveStatus from "../NavbarFileSaveStatus/NavbarFileSaveStatus";
 import ImageElementStore from "@/state/stores/ImageElementStore";
+import useStoreContext from "@/state/hooks/useStoreContext";
+import Undo from "../icons/Undo/Undo";
+import Redo from "../icons/Redo/Redo";
 
 function Navbar(): ReactNode {
 	const {
@@ -51,7 +54,11 @@ function Navbar(): ReactNode {
 		resetLayersAndElements,
 		createElement,
 		changeDimensions,
-		clearHistory
+		clearHistory,
+		undo,
+		redo,
+		canUndo,
+		canRedo
 	} = useStore(
 		useShallow((state) => ({
 			prepareForExport: state.prepareForExport,
@@ -63,10 +70,15 @@ function Navbar(): ReactNode {
 			resetLayersAndElements: state.resetLayersAndElements,
 			createElement: state.createElement,
 			changeDimensions: state.changeDimensions,
-			clearHistory: state.clearHistory
+			clearHistory: state.clearHistory,
+			undo: state.undo,
+			redo: state.redo,
+			canUndo: state.undoStack.length > 0,
+			canRedo: state.redoStack.length > 0
 		}))
 	);
 	const { ref } = useCanvasRef();
+	const store = useStoreContext();
 	const downloadRef = useRef<HTMLAnchorElement>(null);
 	const openFileRef = useRef<HTMLInputElement>(null);
 	const [saveStatus, setSaveStatus] = useState<"saving" | "saved" | "error">(
@@ -80,6 +92,7 @@ function Navbar(): ReactNode {
 			action: (() => void) | (() => Promise<void>);
 			icon?: (props: ComponentProps<"svg">) => ReactElement;
 			shortcut?: string;
+			disabled?: boolean;
 		}[];
 	};
 
@@ -209,7 +222,7 @@ function Navbar(): ReactNode {
 			await LayersStore.clearStore();
 			await ElementsStore.clearStore();
 			await ImageElementStore.clearStore();
-			window.localStorage.clear();
+			store.persist.clearStorage();
 			resetLayersAndElements(); // Reset the Zustand state.
 
 			// Upload the image.
@@ -236,6 +249,16 @@ function Navbar(): ReactNode {
 		}
 	}
 
+	function handleUndo() {
+		undo();
+		redrawCanvas();
+	}
+
+	function handleRedo() {
+		redo();
+		redrawCanvas();
+	}
+
 	const menuOptions: MenuOptions = {
 		File: [
 			{
@@ -254,6 +277,22 @@ function Navbar(): ReactNode {
 				text: "Export File",
 				action: handleExportFile,
 				icon: Export
+			}
+		],
+		Edit: [
+			{
+				text: "Undo",
+				action: handleUndo,
+				shortcut: "Z",
+				icon: Undo,
+				disabled: !canUndo
+			},
+			{
+				text: "Redo",
+				action: handleRedo,
+				shortcut: "Shift+Z",
+				icon: Redo,
+				disabled: !canRedo
 			}
 		],
 		View: [
@@ -340,6 +379,7 @@ function Navbar(): ReactNode {
 									<MenubarItem
 										key={option.text}
 										onClick={option.action}
+										disabled={option.disabled}
 									>
 										{option.icon && (
 											<span className="mr-[2px]">

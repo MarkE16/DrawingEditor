@@ -1,6 +1,7 @@
 // Lib
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import useCanvasRedrawListener from "@/state/hooks/useCanvasRedrawListener";
+import useStore from "@/state/hooks/useStore";
 
 // Types
 import type { ReactNode } from "react";
@@ -15,7 +16,16 @@ const PREVIEW_DRAW = true;
 
 function LayerPreview({ id }: LayerPreviewProps): ReactNode {
 	const previewRef = useRef<HTMLCanvasElement>(null);
+	const drawCanvas = useStore((state) => state.drawCanvas);
 
+	// Initial draw
+	useEffect(() => {
+		const canvas = previewRef.current;
+		if (!canvas) return;
+		drawCanvas(canvas, canvas, { layerId: id, preview: PREVIEW_DRAW });
+	}, [drawCanvas, id]);
+
+	// Then listen for future redraws
 	useCanvasRedrawListener(previewRef, id, DEBOUNCE_REDRAW, PREVIEW_DRAW);
 
 	return (

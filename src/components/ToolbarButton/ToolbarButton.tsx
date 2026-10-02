@@ -55,10 +55,10 @@ function ToolbarButton({
 			redo: state.redo
 		}))
 	);
-	const { undoLength, redoLength } = useStore(
+	const { canUndo, canRedo } = useStore(
 		useShallow((state) => ({
-			undoLength: state.undoStack.length,
-			redoLength: state.redoStack.length
+			canUndo: state.undoStack.length > 0,
+			canRedo: state.redoStack.length > 0
 		}))
 	);
 	const tooltip =
@@ -126,7 +126,7 @@ function ToolbarButton({
 				data-testid={`tool-${name}`}
 				onClick={performAction}
 				disabled={
-					name === "undo" ? !undoLength : name === "redo" ? !redoLength : false
+					name === "undo" ? !canUndo : name === "redo" ? !canRedo : false
 				}
 			>
 				{ICONS[name]}

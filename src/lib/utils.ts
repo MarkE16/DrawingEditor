@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import type { Layer, Coordinates } from "../types";
+import type { Layer, Vector } from "../types";
 
 type CapitalizeOptions = {
 	titleCase: boolean;
@@ -81,35 +81,6 @@ function swapElements<T>(arr: T[], from: number, to: number): T[] {
 		if (i === to) return elementAtFrom;
 		return element;
 	});
-}
-
-function getCanvasScale(canvas: HTMLCanvasElement) {
-	const rect = canvas.getBoundingClientRect();
-	const scaleX = canvas.width / rect.width;
-	const scaleY = canvas.height / rect.height;
-
-	return { scaleX, scaleY };
-}
-
-/**
- * Get the position of the given X and Y coordinate relative to the given HTMLCanvasElement.
- * @param x The x-coordinate to calculate.
- * @param y The y-coordinate to calculate.
- * @param canvas The canvas element.
- * @returns The an X and Y coordinate relative to the canvas.
- */
-function getCanvasPosition(
-	x: number,
-	y: number,
-	canvas: HTMLCanvasElement
-): Coordinates {
-	const rect = canvas.getBoundingClientRect();
-	const { scaleX, scaleY } = getCanvasScale(canvas);
-
-	const computedX = (x - rect.left) * scaleX;
-	const computedY = (y - rect.top) * scaleY;
-
-	return { x: computedX, y: computedY };
 }
 
 /**
@@ -202,6 +173,11 @@ function getCookie(name: string): string | null {
 	return match ? decodeURIComponent(match[2]) : null;
 }
 
+function updateVector2(vector: Vector<2>, x: number, y: number) {
+	vector[0] = x;
+	vector[1] = y;
+}
+
 type OperatingSystem = "Windows" | "MacOS" | "Linux";
 
 /**
@@ -224,7 +200,7 @@ function detectOperatingSystem(): OperatingSystem {
 
 /**
  *
- * @param noChange Whether visually, nothing may have no changed.
+ * @param noChange Whether visually, nothing may have not changed.
  */
 function redrawCanvas(noChange: boolean = false) {
 	document.dispatchEvent(
@@ -236,11 +212,11 @@ export {
 	capitalize,
 	createLayer,
 	swapElements,
-	getCanvasPosition,
 	navigateTo,
 	isRectIntersecting,
 	debounce,
 	getCookie,
+	updateVector2,
 	detectOperatingSystem,
 	redrawCanvas
 };

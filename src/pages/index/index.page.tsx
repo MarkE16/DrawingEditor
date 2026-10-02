@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import LayersStore from "@/state/stores/LayersStore";
 import ElementsStore from "@/state/stores/ElementsStore";
-import { initializeStore } from "@/state/store";
+import { initializeEditorStore } from "@/state/store";
 import useInitialEditorState from "@/state/hooks/useInitialEditorState";
 
 // Components
@@ -50,7 +50,7 @@ function Page() {
 	}, []);
 
 	return (
-		<StoreProvider store={initializeStore(state)}>
+		<StoreProvider store={initializeEditorStore(state)}>
 			<CanvasReferenceProvider>
 				<ErrorBoundary>
 					<Navbar />

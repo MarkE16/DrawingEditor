@@ -1,9 +1,5 @@
 // Lib
-import ElementsStore from "@/state/stores/ElementsStore";
-import LayersStore from "@/state/stores/LayersStore";
-import { useEffect, useState } from "react";
 import useStore from "@/state/hooks/useStore";
-import { useShallow } from "zustand/react/shallow";
 
 // Types
 import type { ReactNode } from "react";
@@ -13,54 +9,11 @@ import CanvasPane from "@/components/CanvasPane/CanvasPane";
 import LeftToolbar from "@/components/LeftToolbar/LeftToolbar";
 import LayerPane from "@/components/LayerPane/LayerPane";
 import ReferenceWindow from "@/components/ReferenceWindow/ReferenceWindow";
-import { redrawCanvas } from "@/lib/utils";
-import ImageElementStore from "@/state/stores/ImageElementStore";
 
 function Main(): ReactNode {
-	const {
-		setElements,
-		setLayers,
-		refereceWindowEnabled,
-		loadCanvasProperties
-	} = useStore(
-		useShallow((store) => ({
-			setElements: store.setElements,
-			setLayers: store.setLayers,
-			refereceWindowEnabled: store.referenceWindowEnabled,
-			loadCanvasProperties: store.loadCanvasProperties
-		}))
-	);
-	const [loading, setLoading] = useState<boolean>(true);
-
-	useEffect(() => {
-		async function updateLayersAndElements() {
-			const elements = await ElementsStore.getElements();
-			const layers = await LayersStore.getLayers();
-			await ImageElementStore.loadImages();
-			loadCanvasProperties();
-
-			// There must always be at least one layer.
-			// If there are no layers, do not update,
-			// and instead use the default layer state.
-			if (layers.length > 0) {
-				setLayers(
-					layers
-						.sort((a, b) => b[1].position - a[1].position)
-						.map(([id, { name }], i) => ({
-							name,
-							id,
-							active: i === 0,
-							hidden: false
-						}))
-				);
-			}
-			setElements(elements.map(([, element]) => element));
-			setLoading(false);
-			redrawCanvas();
-		}
-
-		updateLayersAndElements();
-	}, [setElements, setLayers, loadCanvasProperties]);
+	const refereceWindowEnabled = useStore(
+    (state) => state.referenceWindowEnabled
+  );
 
 	return (
 		<main
@@ -70,7 +23,7 @@ function Main(): ReactNode {
 		>
 			<LeftToolbar />
 
-			<CanvasPane loading={loading} />
+			<CanvasPane  />
 
 			{/* Reference window */}
 			{refereceWindowEnabled && <ReferenceWindow />}

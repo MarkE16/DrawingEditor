@@ -65,7 +65,6 @@ export type CanvasStore = CanvasState & {
 	changeY: (payload: number) => void;
 	toggleReferenceWindow: () => void;
 	prepareForSave: () => SavedCanvasProperties;
-	loadCanvasProperties: () => void;
 	prepareForExport: (ref: HTMLCanvasElement, quality?: number) => Promise<Blob>;
 	drawCanvas: (
 		baseCanvas: HTMLCanvasElement,
@@ -86,6 +85,12 @@ export type CanvasStore = CanvasState & {
 		top: boolean;
 	};
 	centerCanvas: (ref: HTMLCanvasElement) => void;
+	drawPaperCanvas: (
+		ctx: CanvasRenderingContext2D,
+		x: number,
+		y: number,
+		preview?: boolean
+	) => void;
 	resetLayersAndElements: () => void;
 };
 
@@ -95,6 +100,8 @@ export type HistoryStore = {
 	pushHistory: (action: HistoryAction) => void;
 	undo: () => void;
 	redo: () => void;
+	canUndo: () => boolean;
+	canRedo: () => boolean;
 	clearHistory: () => void;
 };
 
