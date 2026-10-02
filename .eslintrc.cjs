@@ -1,6 +1,7 @@
 module.exports = {
 	rules: {
-		"react-refresh/only-export-components": "warn"
+		"react-refresh/only-export-components": "warn",
+		"react/prop-types": "off"
 	},
 	reportUnusedDisableDirectives: true,
 	ignorePatterns: [

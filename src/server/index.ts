@@ -56,7 +56,7 @@ async function startServer() {
 		const theme = req.cookies.theme || "dark";
 		const pageContextInit = {
 			urlOriginal: req.originalUrl,
-			theme,
+			theme
 		};
 		const pageContext = await renderPage(pageContextInit);
 		const { httpResponse } = pageContext;

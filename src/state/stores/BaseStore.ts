@@ -1,6 +1,6 @@
 const DATABASE_NAME = "canvas";
-const STORES = ["layers", "elements"];
-const VERSION = 1;
+const STORES = ["layers", "elements", "images"];
+const VERSION = 2;
 
 export default abstract class BaseStore {
 	protected static storeName: string;

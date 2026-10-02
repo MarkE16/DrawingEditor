@@ -29,7 +29,7 @@ function ColorWheel(props: ColorWheelProps): ReactNode {
 		}))
 	);
 
-	const onChange = (color: Color) => changeColor(color.toString('hex'));
+	const onChange = (color: Color) => changeColor(color.toString("hex"));
 	const wheelColor = parseColor(color).toString("hsl");
 
 	const COLOR_WHEEL_OUTER_RADIUS = 80;

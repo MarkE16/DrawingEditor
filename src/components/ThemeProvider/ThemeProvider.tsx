@@ -62,7 +62,7 @@ function ThemeProvider({
 		return () => {
 			root.classList.remove("light", "dark", "system");
 		};
-	}, []);
+	}, [theme]);
 
 	const updateTheme = useCallback(
 		(theme: Theme) => {

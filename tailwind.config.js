@@ -44,7 +44,7 @@ export default {
 				},
 				// Custom accent color
 				accent: {
-					DEFAULT: "rgba(234, 146, 118, 0.6)"
+					DEFAULT: "#FF5B5A"
 				}
 			},
 			animation: {

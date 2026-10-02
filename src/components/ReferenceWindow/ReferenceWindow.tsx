@@ -1,6 +1,6 @@
 // Lib
 import { useState, memo, useRef } from "react";
-import clsx from "clsx";
+import cn from "@/lib/tailwind-utils";
 
 // Components
 import ReferenceWindowHeader from "@/components/ReferenceWindowHeader/ReferenceWindowHeader";
@@ -9,7 +9,8 @@ import ReferenceWindowControls from "@/components/ReferenceWindowControls/Refere
 
 // Types
 import type { CSSProperties, ReactNode } from "react";
-import { Coordinates } from "@/types";
+import { Vector } from "@/types";
+import { updateVector2 } from "@/lib/utils";
 
 const MemoizedReferenceWindowHeader = memo(ReferenceWindowHeader);
 const MemoizedReferenceWindowContent = memo(ReferenceWindowContent);
@@ -26,7 +27,8 @@ function ReferenceWindow(): ReactNode {
 	const [scale, setScale] = useState<number>(50);
 	const windowRef = useRef<HTMLDivElement>(null);
 
-	const [position, setPosition] = useState<Coordinates>(() => {
+	const [position, setPosition] = useState<Vector<2>>(() => {
+		const pos: Vector<2> = [0, 0];
 		if (typeof window !== "undefined") {
 			const { innerWidth, innerHeight } = window;
 
@@ -35,28 +37,24 @@ function ReferenceWindow(): ReactNode {
 			if (windowRefCurrent) {
 				const { offsetWidth, offsetHeight } = windowRefCurrent;
 
-				return {
-					x: (innerWidth - offsetWidth) / 2,
-					y: (innerHeight - offsetHeight) / 2
-				};
+				updateVector2(
+					pos,
+					(innerWidth - offsetWidth) / 2,
+					(innerHeight - offsetHeight) / 2
+				);
+			} else {
+				updateVector2(pos, innerWidth / 2, innerHeight / 2);
 			}
-
-			return {
-				x: innerWidth / 2,
-				y: innerHeight / 2
-			};
 		}
-
-		return {
-			x: 0,
-			y: 0
-		};
+		return pos;
 	});
+	const positionX = position[0];
+	const positionY = position[1];
 
 	const styles: CSSProperties = !pinned
 		? {
-				left: position.x,
-				top: position.y
+				left: positionX,
+				top: positionY
 			}
 		: {
 				left: 0,
@@ -68,7 +66,7 @@ function ReferenceWindow(): ReactNode {
 	const controlsHeight = "70px";
 	const controlsPadding = "10px";
 
-	const cn = clsx(
+	const className = cn(
 		"fixed min-w-[300px] max-w-[60vw] min-h-[40px] max-h-full bg-[rgb(36,36,36)] border border-[rgb(56,55,55)] rounded-[5px] z-[100] overflow-hidden",
 		{
 			"relative border-none top-0 left-0 resize-none max-w-[300px]": pinned,
@@ -78,7 +76,7 @@ function ReferenceWindow(): ReactNode {
 
 	return (
 		<div
-			className={cn}
+			className={className}
 			data-testid="reference-window"
 			ref={windowRef}
 			style={{

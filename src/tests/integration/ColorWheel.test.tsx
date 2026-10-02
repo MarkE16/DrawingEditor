@@ -139,7 +139,7 @@ describe("ColorWheel functionality", () => {
 
 		// Assert that dispatch was called with the correct action
 		expect(preloadedState.changeColor).toHaveBeenCalledWith(
-			mockColor.toString('hex')
+			mockColor.toString("hex")
 		);
 	});
 
