@@ -1,9 +1,5 @@
 // Lib
-import ElementsStore from "@/state/stores/ElementsStore";
-import LayersStore from "@/state/stores/LayersStore";
-import { useEffect } from "react";
 import useStore from "@/state/hooks/useStore";
-import useStoreEffect from "@/state/hooks/useStoreEffect";
 
 // Types
 import type { ReactNode } from "react";
@@ -15,64 +11,9 @@ import LayerPane from "@/components/LayerPane/LayerPane";
 import ReferenceWindow from "@/components/ReferenceWindow/ReferenceWindow";
 
 function Main(): ReactNode {
-	const { setElements, setLayers } = useStore((store) => ({
-		setElements: store.setElements,
-		setLayers: store.setLayers
-	}));
 	const refereceWindowEnabled = useStore(
-		(store) => store.referenceWindowEnabled
-	);
-
-	useEffect(() => {
-		async function updateLayersAndElements() {
-			const elements = await ElementsStore.getElements();
-			const layers = await LayersStore.getLayers();
-
-			// There must always be at least one layer.
-			// If there are no layers, do not update,
-			// and instead use the default layer state.
-			if (layers.length > 0) {
-				setLayers(
-					layers
-						.sort((a, b) => b[1].position - a[1].position)
-						.map(([id, { name }], i) => ({
-							name,
-							id,
-							active: i === 0,
-							hidden: false
-						}))
-				);
-			}
-			setElements(
-				elements.map(([, element]) => ({
-					...element,
-					focused: false
-				}))
-			);
-		}
-
-		updateLayersAndElements();
-	}, [setElements, setLayers]);
-
-	useStoreEffect(
-		(state) => ({ layers: state.layers, elements: state.elements }),
-		(current, previous) => {
-			const changeInLayerToggle =
-				current.layers.length === previous.layers.length &&
-				current.layers.some(
-					(layer, index) => layer.active !== previous.layers[index].active
-				);
-			const layerAdded = current.layers.length > previous.layers.length;
-
-			document.dispatchEvent(
-				new CustomEvent("canvas:redraw", {
-					detail: {
-						noChange: changeInLayerToggle || layerAdded
-					}
-				})
-			);
-		}
-	);
+    (state) => state.referenceWindowEnabled
+  );
 
 	return (
 		<main
@@ -82,7 +23,7 @@ function Main(): ReactNode {
 		>
 			<LeftToolbar />
 
-			<CanvasPane />
+			<CanvasPane  />
 
 			{/* Reference window */}
 			{refereceWindowEnabled && <ReferenceWindow />}

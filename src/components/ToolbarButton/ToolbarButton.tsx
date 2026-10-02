@@ -55,10 +55,10 @@ function ToolbarButton({
 			redo: state.redo
 		}))
 	);
-	const { undoLength, redoLength } = useStore(
+	const { canUndo, canRedo } = useStore(
 		useShallow((state) => ({
-			undoLength: state.undoStack.length,
-			redoLength: state.redoStack.length
+			canUndo: state.undoStack.length > 0,
+			canRedo: state.redoStack.length > 0
 		}))
 	);
 	const tooltip =
@@ -70,8 +70,10 @@ function ToolbarButton({
 	const performAction = useCallback(() => {
 		if (name === "undo") {
 			undo();
+			UTILS.redrawCanvas();
 		} else if (name === "redo") {
 			redo();
+			UTILS.redrawCanvas();
 		} else {
 			changeMode(name);
 		}
@@ -92,8 +94,6 @@ function ToolbarButton({
 				chosenShortcut += e.key.toLowerCase();
 			}
 
-			console.log(chosenShortcut, shortcut);
-
 			if (chosenShortcut === shortcut) {
 				performAction();
 			}
@@ -113,12 +113,12 @@ function ToolbarButton({
 		>
 			<button
 				className={cn(
-					"p-[0.2em] text-2xl text-center cursor-pointer transition-colors duration-100",
+					"p-[0.2em] text-2xl w-full text-center cursor-pointer transition-colors duration-100",
 					"inline-flex justify-center",
 					"disabled:text-[#3b3b3b] disabled:cursor-not-allowed disabled:hover:bg-transparent",
 					{
 						"bg-transparent hover:bg-[#3b3b3b]": !active,
-						"bg-[#d1836a] border-[#d1603a]": active
+						"bg-accent border-[#d1603a]": active
 					}
 				)}
 				data-modename={name}
@@ -126,7 +126,7 @@ function ToolbarButton({
 				data-testid={`tool-${name}`}
 				onClick={performAction}
 				disabled={
-					name === "undo" ? !undoLength : name === "redo" ? !redoLength : false
+					name === "undo" ? !canUndo : name === "redo" ? !canRedo : false
 				}
 			>
 				{ICONS[name]}

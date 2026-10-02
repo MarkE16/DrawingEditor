@@ -34,7 +34,7 @@ function LayerPane(): ReactNode {
 		}
 	};
 	const newLayerButtonCss =
-		"inline-flex justify-center p-1 text-lg bg-[rgb(36,36,36)] hover:bg-[#d1836a] rounded-t-[5px] border border-[rgb(56,55,55)] disabled:bg-[#242424] disabled:text-gray-500";
+		"inline-flex justify-center p-1 text-lg bg-[rgb(36,36,36)] hover:bg-accent rounded-t-[5px] border border-[rgb(56,55,55)] disabled:bg-[#242424] disabled:text-gray-500";
 
 	const newLayerButton =
 		totalLayers >= MAX_LAYERS ? (

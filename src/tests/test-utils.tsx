@@ -11,7 +11,7 @@ import type { Store } from "@/state/store";
 import { render, renderHook } from "@testing-library/react";
 import { StoreProvider } from "@/components/StoreContext/StoreContext";
 
-import { initializeStore } from "@/state/store";
+import { initializeEditorStore } from "@/state/store";
 import { ThemeProvider } from "@/components/ThemeProvider/ThemeProvider";
 
 type ExtendedRenderOptions = Omit<RenderOptions, "queries"> & {
@@ -35,7 +35,7 @@ export function renderWithProviders(
 	ui: ReactNode,
 	{
 		preloadedState = {},
-		store = initializeStore(preloadedState),
+		store = initializeEditorStore(preloadedState),
 		...renderOptions
 	}: ExtendedRenderOptions = {}
 ): RenderResult {
@@ -58,7 +58,7 @@ export function renderHookWithProviders<Result, Props>(
 	hook: (props: Props) => Result,
 	{
 		preloadedState = {},
-		store = initializeStore(preloadedState),
+		store = initializeEditorStore(preloadedState),
 		...renderOptions
 	}: ExtendedRenderHookOptions<Props> = {}
 ): RenderHookResult<Result, Props> {

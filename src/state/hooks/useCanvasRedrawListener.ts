@@ -1,4 +1,4 @@
-import { RefObject, useEffect } from "react";
+import { RefObject, useCallback, useEffect } from "react";
 import useStore from "./useStore";
 import useThrottle from "./useThrottle";
 import useDebounceCallback from "./useDebounceCallback";
@@ -16,13 +16,25 @@ const DEBOUNCE_TIME_MS = 500;
  * This is useful so that the canvas will not be redrawn until the event stops
  * being triggered for a certain amount of time. (E.g., won't update until there
  * is no update for half a second)
+ * @param preview A boolean indicating whether to draw the canvas as a final image (e.g, draw the image normally without transformations)
  */
 function useCanvasRedrawListener(
 	canvasRef: RefObject<HTMLCanvasElement | null>,
 	layerId?: string,
-	debounce: boolean = false
+	debounce: boolean = false,
+	preview: boolean = false
 ): void {
 	const drawCanvas = useStore((state) => state.drawCanvas);
+
+	const draw = useCallback(
+		(canvas: HTMLCanvasElement, layerId?: string) => {
+			drawCanvas(canvas, canvas, { layerId, preview });
+			// requestAnimationFrame(() => {
+			// 	draw(canvas, layerId);
+			// });
+		},
+		[drawCanvas, preview]
+	);
 
 	const handleCanvasRedraw = useThrottle((e: CanvasRedrawEvent) => {
 		const noChange = e.detail?.noChange;
@@ -38,7 +50,7 @@ function useCanvasRedrawListener(
 
 		const canvas = canvasRef.current;
 		if (canvas) {
-			drawCanvas(canvas, layerId);
+			draw(canvas, layerId);
 		}
 	}, 10);
 
@@ -57,10 +69,22 @@ function useCanvasRedrawListener(
 				);
 		}
 
-		document.addEventListener("canvas:redraw", handleCanvasRedraw);
+		function onResize() {
+			// TODO: When resizing, drawing the canvas should not keep the canvas 'centered'. It should stay in place.
+			// This needs to be revisited later.
+			const e = new CustomEvent("canvas:redraw", {
+				detail: { noChange: true }
+			});
+			handleCanvasRedraw(e);
+		}
 
-		return () =>
+		document.addEventListener("canvas:redraw", handleCanvasRedraw);
+		window.addEventListener("resize", onResize);
+
+		return () => {
 			document.removeEventListener("canvas:redraw", handleCanvasRedraw);
+			window.removeEventListener("resize", onResize);
+		};
 	}, [handleCanvasRedraw, debounce, handleCanvasRedrawDebounced]);
 }
 

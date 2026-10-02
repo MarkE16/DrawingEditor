@@ -1,22 +1,22 @@
 // Lib
 import { SHAPES } from "@/state/store";
-import { memo, Fragment } from "react";
+import { memo, Fragment, useCallback } from "react";
 import useStore from "@/state/hooks/useStore";
 import { useShallow } from "zustand/react/shallow";
 import cn from "@/lib/tailwind-utils";
 
 // Type
-import type { ReactNode, ChangeEvent, MouseEvent, ReactElement } from "react";
+import type { ReactNode, MouseEvent, ReactElement } from "react";
 import type { Shape } from "@/types";
 
 // Components
 import ShapeOption from "@/components/ShapeOption/ShapeOption";
+import DrawingToolbarRangeConfig from "../DrawingToolbarRangeConfig/DrawingToolbarRangeConfig";
 
 // Icons
 import Square from "@/components/icons/Square/Square";
 import Circle from "@/components/icons/Circle/Circle";
 import Triangle from "../icons/Triangle/Triangle";
-import Brush from "../icons/Brush/Brush";
 
 const MemoizedShapeOption = memo(ShapeOption);
 
@@ -30,9 +30,7 @@ function DrawingToolbar(): ReactNode {
 	const {
 		mode,
 		shape,
-		opacity,
 		shapeMode,
-		strokeWidth,
 		changeStrokeWidth,
 		changeOpacity,
 		changeShapeMode
@@ -40,31 +38,12 @@ function DrawingToolbar(): ReactNode {
 		useShallow((state) => ({
 			mode: state.mode,
 			shape: state.shape,
-			opacity: state.opacity,
 			shapeMode: state.shapeMode,
-			strokeWidth: state.strokeWidth,
 			changeStrokeWidth: state.changeStrokeWidth,
 			changeOpacity: state.changeOpacity,
 			changeShapeMode: state.changeShapeMode
 		}))
 	);
-
-	const strengthSettings = {
-		value: strokeWidth,
-		min: 1,
-		max: 100
-	};
-
-	const handleStrengthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const strength = Number(e.target.value);
-
-		changeStrokeWidth(strength);
-	};
-
-	const onOpacityChange = (e: ChangeEvent<HTMLInputElement>) => {
-		const value = Number(e.target.value);
-		changeOpacity(value);
-	};
 
 	const renderedShapes = (
 		<Fragment key="settings_Shapes">
@@ -112,40 +91,33 @@ function DrawingToolbar(): ReactNode {
 	);
 
 	const renderedStrength = (
-		<Fragment key="settings_Strength">
-			<span className="text-sm">Stroke Width</span>
-			<input
-				name={`${mode}_strength`.toUpperCase()}
-				type="range"
-				min={strengthSettings.min}
-				max={strengthSettings.max}
-				step="1"
-				value={strengthSettings.value}
-				onChange={handleStrengthChange}
-				data-testid="strength-range"
-			/>
-			<span
-				data-testid="strength-value"
-				className="text-sm"
-			>
-				{strengthSettings.value}
-			</span>
-		</Fragment>
+		<DrawingToolbarRangeConfig
+			label="Size"
+			selector={useCallback((state) => state.strokeWidth, [])}
+			type="range"
+			min={1}
+			max={100}
+			step={1}
+			onFinalizedChange={useCallback(
+				(value: number) => changeStrokeWidth(value),
+				[changeStrokeWidth]
+			)}
+		/>
 	);
 
 	const renderedOpacity = (
-		<Fragment key="settings_Brush">
-			<Brush />
-			<input
-				type="range"
-				id="brush-size"
-				min={0.01}
-				max={1}
-				step={0.01}
-				value={opacity}
-				onChange={onOpacityChange}
-			/>
-		</Fragment>
+		<DrawingToolbarRangeConfig
+			label="Opacity"
+			selector={useCallback((state) => state.opacity, [])}
+			type="range"
+			min={0.01}
+			max={1}
+			step={0.01}
+			onFinalizedChange={useCallback(
+				(value: number) => changeOpacity(value),
+				[changeOpacity]
+			)}
+		/>
 	);
 
 	const additionalSettings: ReactNode[] = [];
@@ -182,7 +154,7 @@ function DrawingToolbar(): ReactNode {
 
 	return (
 		<div
-			className="flex items-center justify-center text-center absolute top-[10px] w-[80%] min-w-0 min-h-[46px] rounded-[25px] bg-[#303744] shadow-[0_0_10px_rgba(0,0,0,0.5)] p-[0.5em_1.5em] overflow-auto z-[100] pointer-events-none [&>*]:pointer-events-auto"
+		className="flex items-center justify-center text-center absolute top-[10px] w-[80%] min-w-0 min-h-[46px] rounded-[25px] bg-[#303744] shadow-[0_0_10px_rgba(0,0,0,0.5)] p-[0.5em_1.5em] overflow-auto z-[100] pointer-events-none [&>*]:pointer-events-auto"
 			data-testid="drawing-toolbar"
 			role="toolbar"
 			onMouseDown={stopPropagation}
