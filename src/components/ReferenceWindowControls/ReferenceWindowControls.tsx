@@ -36,6 +36,8 @@ function ReferenceWindowControls({
 	setRotationDegrees
 }: ReferenceWindowControlsProps): ReactNode {
 	const fileInput = useRef<HTMLInputElement>(null);
+	const buttonCss =
+		"bg-transparent border-none text-white rounded-[10px] p-[5px] text-[0.9em] mx-[2px] cursor-pointer hover:bg-[rgba(255,255,255,0.1)] first:ml-0 last:mr-0 disabled:text-[rgba(255,255,255,0.5)] disabled:cursor-not-allowed disabled:hover:bg-transparent";
 
 	const onReplaceImage = () => {
 		if (fileInput.current) {
@@ -83,6 +85,7 @@ function ReferenceWindowControls({
 
 	return (
 		<section
+			className="p-[10px] h-[70px] border-t border-white [&>*]:w-full"
 			id="reference-window-controls"
 			data-testid="reference-window-controls"
 		>
@@ -96,7 +99,10 @@ function ReferenceWindowControls({
 				onChange={(e) => setScale(+e.target.value)}
 				data-testid="scale-slider"
 			/>
-			<section id="reference-window-controls-button-group">
+			<section
+				id="reference-window-controls-button-group"
+				className="flex justify-between items-center"
+			>
 				<aside>
 					<Tooltip
 						text="Zoom In"
@@ -105,7 +111,7 @@ function ReferenceWindowControls({
 					>
 						<button
 							disabled={!imageAvailable || scale === 100}
-							className="reference-window-controls-button"
+							className={buttonCss}
 							onClick={() => updateScale("increase")}
 							data-testid="zoom-in"
 						>
@@ -119,7 +125,7 @@ function ReferenceWindowControls({
 					>
 						<button
 							disabled={!imageAvailable || scale === 1}
-							className="reference-window-controls-button"
+							className={buttonCss}
 							onClick={() => updateScale("decrease")}
 							data-testid="zoom-out"
 						>
@@ -133,7 +139,7 @@ function ReferenceWindowControls({
 					>
 						<button
 							onClick={onPin}
-							className="reference-window-controls-button"
+							className={buttonCss}
 							data-testid="pin"
 						>
 							<Pin />
@@ -146,7 +152,7 @@ function ReferenceWindowControls({
 					>
 						<button
 							disabled={!imageAvailable}
-							className="reference-window-controls-button"
+							className={buttonCss}
 							onClick={onFlip}
 							data-testid="flip"
 						>
@@ -160,7 +166,7 @@ function ReferenceWindowControls({
 					>
 						<button
 							disabled={!imageAvailable}
-							className="reference-window-controls-button"
+							className={buttonCss}
 							onClick={onRotate}
 							data-testid="rotate"
 						>

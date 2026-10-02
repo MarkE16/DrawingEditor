@@ -23,7 +23,7 @@ type MockProps = PropsWithChildren & {
 
 const mockColorWheelProps = vi.fn();
 const mockColorAreaProps = vi.fn();
-const mockColor = parseColor("hsla(240, 100%, 50%, 1)"); // Simulated color
+const mockColor = parseColor("#00FF00"); // Simulated color; color is green
 
 // NOTE: Using the click event to simulate the color change because the onChange event is not being triggered
 vi.mock("react-aria-components", async (importOriginal) => {
@@ -66,9 +66,8 @@ describe("ColorWheel functionality", () => {
 	const preloadedState: Partial<CanvasStore> = {
 		width: 400,
 		height: 400,
-		mode: "select",
-		drawStrength: 5,
-		eraserStrength: 3,
+		mode: "move",
+		strokeWidth: 5,
 		scale: 1,
 		dpi: 1,
 		position: { x: 0, y: 0 },
@@ -76,7 +75,7 @@ describe("ColorWheel functionality", () => {
 			{ name: "Layer 1", id: "1", active: true, hidden: false },
 			{ name: "Layer 2", id: "2", active: false, hidden: false }
 		],
-		color: "hsla(0, 100%, 50%, 1)", // Default red color,
+		color: "#FF0000", // Default red color,
 		changeColor: vi.fn()
 	};
 
@@ -107,16 +106,17 @@ describe("ColorWheel functionality", () => {
 	});
 
 	it("should render with default color", () => {
-		// Check initial Redux state
+		// Note: We store hex color in the state, but we need to convert it to hsl for the color wheel.
+		const expected = parseColor("#FF0000");
 		expect(mockColorWheelProps).toHaveBeenCalledWith(
 			expect.objectContaining({
-				value: preloadedState.color
+				value: expected.toString("hsl")
 			})
 		);
 
 		expect(mockColorAreaProps).toHaveBeenCalledWith(
 			expect.objectContaining({
-				value: preloadedState.color
+				value: expected.toString("hsl")
 			})
 		);
 	});
@@ -128,7 +128,7 @@ describe("ColorWheel functionality", () => {
 
 		// Assert that dispatch was called with the correct action
 		expect(preloadedState.changeColor).toHaveBeenCalledWith(
-			mockColor.toString()
+			mockColor.toString("hex")
 		);
 	});
 
@@ -139,7 +139,7 @@ describe("ColorWheel functionality", () => {
 
 		// Assert that dispatch was called with the correct action
 		expect(preloadedState.changeColor).toHaveBeenCalledWith(
-			mockColor.toString()
+			mockColor.toString("hex")
 		);
 	});
 

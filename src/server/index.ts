@@ -13,6 +13,7 @@
 
 import express from "express";
 import compression from "compression";
+import cookieParser from "cookie-parser";
 import { renderPage } from "vite-plugin-ssr/server";
 import { root } from "./root.js";
 const isProduction = process.env.NODE_ENV === "production";
@@ -23,6 +24,7 @@ async function startServer() {
 	const app = express();
 
 	app.use(compression());
+	app.use(cookieParser());
 
 	// Vite integration
 	if (isProduction) {
@@ -51,8 +53,10 @@ async function startServer() {
 	// Vite-plugin-ssr middleware. It should always be our last middleware (because it's a
 	// catch-all middleware superseding any middleware placed after it).
 	app.get("*", async (req, res, next) => {
+		const theme = req.cookies.theme || "dark";
 		const pageContextInit = {
-			urlOriginal: req.originalUrl
+			urlOriginal: req.originalUrl,
+			theme
 		};
 		const pageContext = await renderPage(pageContextInit);
 		const { httpResponse } = pageContext;

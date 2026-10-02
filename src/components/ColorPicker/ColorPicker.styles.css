@@ -1,98 +1,3 @@
-:root {
-	--overflay-background: #191919;
-	--background-color: #191919;
-	--border-color: #373737;
-	--text-color: #ffffff;
-	--origin: translateY(0);
-	--focus-ring-color: #0078d4;
-}
-
-.color-picker {
-	background: none;
-	border: none;
-	padding: 0;
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	outline: none;
-	border-radius: 4px;
-	appearance: none;
-	vertical-align: middle;
-	font-size: 1rem;
-	margin: 0 5px;
-	color: var(--text-color);
-
-	&[data-focus-visible] {
-		outline: 2px solid var(--focus-ring-color);
-		outline-offset: 2px;
-	}
-}
-
-.color-picker-dialog {
-	outline: none;
-	padding: 15px;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	min-width: 192px;
-	max-height: inherit;
-	box-sizing: border-box;
-	overflow: auto;
-}
-
-.react-aria-Popover {
-	border: 1px solid var(--border-color);
-	box-shadow: 0 8px 20px rgba(0 0 0 / 0.1);
-	border-radius: 6px;
-	background: var(--background-color);
-	color: var(--text-color);
-	outline: none;
-	max-width: 250px;
-
-	&[data-placement="top"] {
-		--origin: translateY(8px);
-	}
-
-	&[data-placement="bottom"] {
-		--origin: translateY(-8px);
-	}
-
-	&[data-placement="right"] {
-		--origin: translateX(-8px);
-	}
-
-	&[data-placement="left"] {
-		--origin: translateX(8px);
-	}
-
-	&[data-entering] {
-		animation: popover-slide 200ms;
-	}
-
-	&[data-exiting] {
-		animation: popover-slide 200ms reverse ease-in;
-	}
-}
-
-@keyframes popover-slide {
-	from {
-		transform: var(--origin);
-		opacity: 0;
-	}
-
-	to {
-		transform: translateY(0);
-		opacity: 1;
-	}
-}
-
-.react-aria-ColorArea {
-	width: 192px;
-	height: 192px;
-	border-radius: 4px;
-	flex-shrink: 0;
-}
-
 .react-aria-ColorSlider {
 	display: grid;
 	grid-template-areas:
@@ -101,34 +6,21 @@
 	grid-template-columns: 1fr auto;
 	gap: 4px;
 	max-width: 300px;
-
-	.react-aria-Label {
-		grid-area: label;
-	}
-
-	.react-aria-SliderOutput {
-		grid-area: output;
-	}
-
-	.react-aria-SliderTrack {
-		grid-area: track;
-		border-radius: 4px;
-	}
-
-	&[data-orientation="horizontal"] {
-		.react-aria-SliderTrack {
-			height: 28px;
-		}
-
-		.react-aria-ColorThumb {
-			top: 50%;
-		}
-	}
 }
 
-.react-aria-ColorSwatch {
-	width: 30px;
-	height: 30px;
+.react-aria-ColorSlider .react-aria-Label {
+	grid-area: label;
+}
+
+.react-aria-ColorSlider .react-aria-SliderOutput {
+	grid-area: output;
+}
+
+.react-aria-ColorSlider .react-aria-SliderTrack {
+	grid-area: track;
 	border-radius: 4px;
-	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.react-aria-ColorSlider[data-orientation="horizontal"] .react-aria-SliderTrack {
+	height: 18px;
 }

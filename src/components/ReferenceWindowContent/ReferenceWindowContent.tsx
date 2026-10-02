@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 // Types
-import clsx from "clsx";
+import cn from "@/lib/tailwind-utils";
 import type {
 	ReactNode,
 	DragEvent,
@@ -79,14 +79,17 @@ function ReferenceWindowContent({
 	const imageStyles: CSSProperties = {
 		transform: `rotate(${rotationDegrees}deg) scaleX(${flipped ? -1 : 1}) scale(${scale / 50})`
 	};
-	const cn = clsx("reference-window-content", {
-		minimal,
-		"dragging-over": isDraggingOver
-	});
 
 	return (
 		<section
-			className={cn}
+			className={cn(
+				"flex justify-center items-center m-[5px] border border-[rgb(56,55,55)] rounded-[5px] overflow-hidden text-sm",
+				{
+					"border-dashed border-white": isDraggingOver,
+					"h-[calc(100%-50px)]": minimal,
+					"h-[calc(100%-120px)]": !minimal
+				}
+			)}
 			onDragOver={onDragOver}
 			onDragLeave={onDragLeave}
 			onDrop={onDrop}
@@ -95,6 +98,7 @@ function ReferenceWindowContent({
 			{imageURL ? (
 				<img
 					style={imageStyles}
+					className="max-w-full max-h-full h-full object-contain cursor-pointer"
 					id="reference-image"
 					tabIndex={0}
 					src={imageURL}

@@ -1,31 +1,44 @@
 export { render };
 // See https://vite-plugin-ssr.com/data-fetching
-export const passToClient = ["pageProps", "urlPathname"];
+export const passToClient = [
+	"pageProps",
+	"urlPathname",
+	"zustandState",
+	"theme"
+];
 
 import { PageShell } from "./PageShell";
-import { escapeInject, dangerouslySkipEscape } from "vite-plugin-ssr/server";
-import logo from "../assets/icons/IdeaDrawnNewLogo_transparent.png";
+import { escapeInject } from "vite-plugin-ssr/server";
+import logo from "@/assets/icons/IdeaDrawnNewLogo.png";
 import type { PageContextServer } from "./types";
 import { renderToStream } from "react-streaming/server";
-import { initializeStore } from "../state/store";
-import { StoreProvider } from "../components/StoreContext/StoreContext";
+import { initializeEditorStore } from "@/state/store";
+import type { SliceStores } from "@/types";
+import { ThemeProvider } from "@/components/ThemeProvider/ThemeProvider";
 
 async function render(pageContext: PageContextServer) {
-	const { Page, pageProps } = pageContext;
+	const { Page, pageProps, theme } = pageContext;
 	// This render() hook only supports SSR, see https://vite-plugin-ssr.com/render-modes for how to modify render() to support SPA
 	if (!Page)
 		throw new Error("My render() hook expects pageContext.Page to be defined");
 
-	const store = initializeStore();
-	const html = await renderToStream(
-		<PageShell pageContext={pageContext}>
-			<StoreProvider store={store}>
-				<Page {...pageProps} />
-			</StoreProvider>
-		</PageShell>
+	const store = initializeEditorStore();
+	const preloadedState = store.getState();
+	const stateWithoutFunctions: Partial<SliceStores> = Object.fromEntries(
+		Object.entries(preloadedState).filter(
+			([, value]) => typeof value !== "function"
+		)
 	);
 
-	const preloadedState = store.getState();
+	pageContext.zustandState = stateWithoutFunctions;
+
+	const html = await renderToStream(
+		<ThemeProvider initialTheme={theme}>
+			<PageShell pageContext={pageContext}>
+				<Page {...pageProps} />
+			</PageShell>
+		</ThemeProvider>
+	);
 
 	// See https://vite-plugin-ssr.com/head
 	const { documentProps } = pageContext.exports;
@@ -34,10 +47,8 @@ async function render(pageContext: PageContextServer) {
 		(documentProps && documentProps.description) ||
 		"App using Vite + vite-plugin-ssr";
 
-	const jsonState = JSON.stringify(preloadedState).replace(/</g, "\\u003c");
-
-	// we use the dangerouslySkipEscape() so that the JSON is not escaped
-	// due to escapeInject, which is supposed to help prevent XSS attacks
+	// escapeInject is a helper function to escape HTML injections
+	// which is common with XXS attacks.
 	const documentHtml = escapeInject`<!DOCTYPE html>
     <html lang="en">
       <head>
@@ -47,11 +58,8 @@ async function render(pageContext: PageContextServer) {
         <meta name="description" content="${desc}" />
         <title>${title}</title>
       </head>
-      <body>
+      <body class="${theme === "dark" ? "dark" : ""}">
         <div id="entry">${html as unknown as ReadableStream}</div>
-        <script id="__preloaded_state__">
-          window.__PRELOADED_STATE__ = ${dangerouslySkipEscape(jsonState)}
-        </script>
       </body>
     </html>`;
 
@@ -59,6 +67,7 @@ async function render(pageContext: PageContextServer) {
 		documentHtml,
 		pageContext: {
 			// We can add some `pageContext` here, which is useful if we want to do page redirection https://vite-plugin-ssr.com/page-redirection
+			zustandState: stateWithoutFunctions
 		}
 	};
 }

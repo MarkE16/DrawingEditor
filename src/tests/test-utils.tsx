@@ -11,8 +11,8 @@ import type { Store } from "@/state/store";
 import { render, renderHook } from "@testing-library/react";
 import { StoreProvider } from "@/components/StoreContext/StoreContext";
 
-import { initializeStore } from "@/state/store";
-import { LayerReferencesProvider } from "@/components/LayerReferencesProvider/LayerReferencesProvider";
+import { initializeEditorStore } from "@/state/store";
+import { ThemeProvider } from "@/components/ThemeProvider/ThemeProvider";
 
 type ExtendedRenderOptions = Omit<RenderOptions, "queries"> & {
 	preloadedState?: Partial<SliceStores>;
@@ -35,14 +35,14 @@ export function renderWithProviders(
 	ui: ReactNode,
 	{
 		preloadedState = {},
-		store = initializeStore(preloadedState),
+		store = initializeEditorStore(preloadedState),
 		...renderOptions
 	}: ExtendedRenderOptions = {}
 ): RenderResult {
 	const Wrapper = ({ children }: PropsWithChildren) => (
-		<LayerReferencesProvider>
+		<ThemeProvider>
 			<StoreProvider store={store}>{children}</StoreProvider>
-		</LayerReferencesProvider>
+		</ThemeProvider>
 	);
 
 	return render(ui, { wrapper: Wrapper, ...renderOptions });
@@ -58,14 +58,14 @@ export function renderHookWithProviders<Result, Props>(
 	hook: (props: Props) => Result,
 	{
 		preloadedState = {},
-		store = initializeStore(preloadedState),
+		store = initializeEditorStore(preloadedState),
 		...renderOptions
 	}: ExtendedRenderHookOptions<Props> = {}
 ): RenderHookResult<Result, Props> {
 	const Wrapper = ({ children }: PropsWithChildren) => (
-		<LayerReferencesProvider>
+		<ThemeProvider>
 			<StoreProvider store={store}>{children}</StoreProvider>
-		</LayerReferencesProvider>
+		</ThemeProvider>
 	);
 
 	return renderHook(hook, { wrapper: Wrapper, ...renderOptions });

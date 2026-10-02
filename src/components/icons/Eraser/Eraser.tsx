@@ -1,5 +1,11 @@
 import { Eraser as LucideEraser } from "lucide-react";
+import type { ComponentProps } from "react";
 
-const Eraser = () => <LucideEraser size="1em" />;
+const Eraser = (props: ComponentProps<"svg">) => (
+	<LucideEraser
+		size="1em"
+		{...props}
+	/>
+);
 
 export default Eraser;

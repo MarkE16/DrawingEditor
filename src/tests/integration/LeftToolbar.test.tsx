@@ -33,7 +33,7 @@ describe("Left Toolbar functionality", () => {
 
 		// First mode should be active by default
 		expect(firstMode).not.toBeNull();
-		expect(firstMode).toHaveClass("active");
+		expect(firstMode).toHaveClass("bg-[#d1836a]");
 
 		// Click on all the other modes
 		for (let i = 1; i < MODES.length; i++) {
@@ -47,13 +47,13 @@ describe("Left Toolbar functionality", () => {
 				// These aren't necessarily modes that we can change to; they're just actions. So, we skip them.
 				break;
 			}
-			expect(mode).not.toHaveClass("active");
-			expect(previousMode).toHaveClass("active");
+			expect(mode).not.toHaveClass("bg-[#d1836a]");
+			expect(previousMode).toHaveClass("bg-[#d1836a]");
 
 			fireEvent.click(mode);
 
-			expect(mode).toHaveClass("active");
-			expect(previousMode).not.toHaveClass("active");
+			expect(mode).toHaveClass("bg-[#d1836a]");
+			expect(previousMode).not.toHaveClass("bg-[#d1836a]");
 		}
 	});
 });

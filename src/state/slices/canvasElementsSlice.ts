@@ -2,43 +2,22 @@ import type { StateCreator } from "zustand";
 import { v4 as uuid } from "uuid";
 import type {
 	CanvasElement,
-	Shape,
+	SliceStores,
 	CanvasElementsStore,
-	CanvasStore,
-	HistoryStore
+	CanvasElementType
 } from "@/types";
 
+type Predicate<A> = (arg: A) => boolean;
+
 export const createCanvasElementsSlice: StateCreator<
-	CanvasElementsStore & CanvasStore & HistoryStore,
+	SliceStores,
 	[],
 	[],
 	CanvasElementsStore
 > = (set, get) => {
-	function focusElement(predicate: (el: CanvasElement) => boolean) {
-		const elements = get().elements;
-		const newElements = elements.map((element) => {
-			if (predicate(element)) {
-				return { ...element, focused: true };
-			}
-			return element;
-		});
-		set({ elements: newElements });
-	}
-
-	function unfocusElement(predicate: (el: CanvasElement) => boolean) {
-		const elements = get().elements;
-		const newElements = elements.map((element) => {
-			if (predicate(element)) {
-				return { ...element, focused: false };
-			}
-			return element;
-		});
-		set({ elements: newElements });
-	}
-
 	function createElement(
-		type: Shape | "text",
-		properties?: Omit<Partial<CanvasElement>, "id">
+		type: CanvasElementType,
+		properties?: Partial<CanvasElement>
 	) {
 		if (type === "text" && !properties?.text) {
 			throw new Error(
@@ -46,36 +25,38 @@ export const createCanvasElementsSlice: StateCreator<
 			);
 		}
 
-		if (!properties?.layerId) {
-			throw new Error("Cannot create element: No existing layer.");
-		}
-
 		const id = uuid();
+		const { shapeMode, strokeWidth, opacity, getActiveLayer } = get();
 
-		// Used NaN to indicate that the x and y values are not set. They will be set later when the user moves the element.
+		const layer = getActiveLayer();
+
 		const element = {
-			x: NaN,
-			y: NaN,
+			x: 0,
+			y: 0,
 			width: 100,
 			height: 100,
-			fill: "#000000",
-			stroke: "#000000",
-			focused: false,
+			color: "#000000",
 			type,
+			inverted: false,
+			path: [],
+			id,
+			layerId: layer.id,
 			...properties, // Override the default properties with the provided properties, if any.
-			id // Keep the id as the last property to ensure that it is not overridden.
+			drawType: shapeMode,
+			strokeWidth: Math.max(1, strokeWidth),
+			opacity: type === "eraser" ? 1 : opacity
 		};
 
 		set((state) => ({
 			elements: [...state.elements, element as CanvasElement]
 		}));
 
-		return id;
+		return element;
 	}
 
 	function changeElementProperties(
 		callback: (el: CanvasElement) => CanvasElement,
-		predicate: (el: CanvasElement) => boolean
+		predicate: Predicate<CanvasElement>
 	) {
 		const elements = get().elements;
 		const newElements = elements.map((element) => {
@@ -99,21 +80,26 @@ export const createCanvasElementsSlice: StateCreator<
 		});
 	}
 
-	function deleteElement(predicate: (el: CanvasElement) => boolean) {
+	function deleteElement(predicate: Predicate<CanvasElement>) {
+		const deletedIds: string[] = [];
 		set((state) => ({
-			elements: state.elements.filter((element) => !predicate(element))
+			elements: state.elements.filter((element) => {
+				if (predicate(element)) {
+					deletedIds.push(element.id);
+					return false; // Filter out the element
+				}
+				return true; // Keep the element
+			})
 		}));
-	}
 
-	function updateMovingState(state: boolean) {
-		set({ elementMoving: state });
+		return deletedIds;
 	}
 
 	function setElements(elements: CanvasElement[]) {
 		set({ elements });
 	}
 
-	function copyElement(predicate: (el: CanvasElement) => boolean) {
+	function copyElement(predicate: Predicate<CanvasElement>) {
 		const elements = get().elements;
 		const copiedElements = elements.filter((element) => predicate(element));
 		set({ copiedElements });
@@ -138,13 +124,9 @@ export const createCanvasElementsSlice: StateCreator<
 	return {
 		elements: [],
 		copiedElements: [],
-		elementMoving: false,
-		focusElement,
-		unfocusElement,
 		createElement,
 		changeElementProperties,
 		deleteElement,
-		updateMovingState,
 		setElements,
 		copyElement,
 		pasteElement
