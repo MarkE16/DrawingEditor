@@ -1,6 +1,6 @@
 // Lib
 import { useState, memo } from "react";
-import clsx from "clsx";
+import cn from "@/lib/tailwind-utils";
 import useStore from "@/state/hooks/useStore";
 import { useShallow } from "zustand/react/shallow";
 import LayersStore from "@/state/stores/LayersStore";
@@ -21,6 +21,7 @@ import type { Layer } from "@/types";
 import LayerPreview from "@/components/LayerPreview/LayerPreview";
 import Tooltip from "@/components/Tooltip/Tooltip";
 import ElementsStore from "@/state/stores/ElementsStore";
+import { redrawCanvas } from "@/lib/utils";
 
 type LayerInfoProps = Readonly<
 	Layer & {
@@ -73,9 +74,7 @@ function LayerInfo({
 
 	const onToggleVisibility = () => {
 		toggleVisibility(id);
-		document.dispatchEvent(
-			new CustomEvent("canvas:redraw", { detail: { noChange: true } })
-		);
+		redrawCanvas(true);
 	};
 
 	const onDelete = () => {
@@ -97,9 +96,7 @@ function LayerInfo({
 		} else {
 			moveLayerDown(id);
 		}
-		document.dispatchEvent(
-			new CustomEvent("canvas:redraw", { detail: { noChange: true } })
-		);
+		redrawCanvas(true);
 	};
 
 	const onRename = () => {
@@ -122,11 +119,11 @@ function LayerInfo({
 	return (
 		<label
 			htmlFor={"layer-" + id}
-			className={clsx(
+			className={cn(
 				"flex items-center w-full max-w-full h-[2.6rem] py-[0.2rem] px-[0.5rem] whitespace-nowrap border border-[rgb(56,55,55)] last:rounded-b-[5px]",
 				"group",
 				{
-					"bg-[#d1836a]": active,
+					"bg-accent": active,
 					"bg-[rgb(36,36,36)]": !active
 				}
 			)}
@@ -201,7 +198,7 @@ function LayerInfo({
 				) : (
 					<div className="flex flex-col mx-[10px] w-full overflow-hidden">
 						<span
-							className="text-white text-[1em] whitespace-nowrap overflow-hidden text-ellipsis w-full leading-[1.2]"
+							className="text-white font-bold text-[1em] whitespace-nowrap overflow-hidden text-ellipsis w-full leading-[1.2]"
 							aria-label="Layer Name"
 							onDoubleClick={onRename}
 						>
@@ -212,7 +209,7 @@ function LayerInfo({
 				<div>
 					<Tooltip text={editingTooltipText}>
 						<button
-							className={clsx(
+							className={cn(
 								"hidden bg-transparent text-lg py-0 px-[0.2em] border-none rounded-full transition-opacity disabled:opacity-50 group-hover:inline group-focus:inline hover:bg-[rgba(255,255,255,0.1)]",
 								{
 									block: isEditing

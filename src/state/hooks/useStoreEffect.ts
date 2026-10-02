@@ -1,7 +1,7 @@
-import { StoreContext } from "@/components/StoreContext/StoreContext";
-import { useContext, useEffect } from "react";
+import { useEffect } from "react";
 import { shallow } from "zustand/shallow";
 import { SliceStores } from "@/types";
+import useStoreContext from "./useStoreContext";
 
 /**
  * A custom hook that allows you to subscribe to a specific state slice in the store
@@ -16,11 +16,7 @@ function useStoreEffect<T>(
 	selector: (state: SliceStores) => T,
 	effect: (curr: T, prev: T) => void
 ) {
-	const store = useContext(StoreContext);
-
-	if (!store) {
-		throw new Error("useStoreEffect must be used within a StoreProvider");
-	}
+	const store = useStoreContext();
 
 	useEffect(() => {
 		const unsubscribe = store.subscribe(selector, effect, {

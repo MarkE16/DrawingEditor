@@ -1,6 +1,6 @@
 // Lib
 import { useRef, useState, useEffect } from "react";
-import clsx from "clsx";
+import cn from "@/lib/tailwind-utils";
 
 // Types
 import type { ReactNode } from "react";
@@ -29,7 +29,7 @@ function ScaleIndicator({ scale }: ScaleIndicatorProps): ReactNode {
 
 	return (
 		<div
-			className={clsx(
+			className={cn(
 				"absolute left-2.5 bottom-2.5 p-1.5 z-10 bg-black rounded-md",
 				"transition-opacity duration-150 pointer-events-none",
 				{ "opacity-100": visible, "opacity-20": !visible }

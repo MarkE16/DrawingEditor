@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 // Types
-import clsx from "clsx";
+import cn from "@/lib/tailwind-utils";
 import type {
 	ReactNode,
 	DragEvent,
@@ -82,7 +82,7 @@ function ReferenceWindowContent({
 
 	return (
 		<section
-			className={clsx(
+			className={cn(
 				"flex justify-center items-center m-[5px] border border-[rgb(56,55,55)] rounded-[5px] overflow-hidden text-sm",
 				{
 					"border-dashed border-white": isDraggingOver,

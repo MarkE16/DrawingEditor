@@ -8,7 +8,7 @@ import type { CanvasElement, HistoryAction, SliceStores } from "../../types";
 import { MODES } from "../../state/store";
 
 const exampleStore: SliceStores = {
-	background: "white",
+	background: "#ffffff",
 	width: 400,
 	height: 400,
 	shape: "rectangle",
@@ -19,7 +19,7 @@ const exampleStore: SliceStores = {
 	dpi: 1,
 	color: "#000000",
 	scale: 1,
-	position: { x: 0, y: 0 },
+	position: [0, 0],
 	layers: [
 		{ name: "Layer 1", id: expect.any(String), active: true, hidden: false }
 	],
@@ -32,8 +32,6 @@ const exampleStore: SliceStores = {
 	changeMode: expect.any(Function),
 	changeColor: expect.any(Function),
 	setLayers: expect.any(Function),
-	increaseScale: expect.any(Function),
-	decreaseScale: expect.any(Function),
 	setPosition: expect.any(Function),
 	changeX: expect.any(Function),
 	changeY: expect.any(Function),
@@ -278,40 +276,6 @@ describe("useStore functionality", () => {
 			expect(result.result.current.scale).toBe(exampleStore.scale);
 		});
 
-		it("should increase the scale by 0.1", () => {
-			act(() => {
-				result.result.current.increaseScale();
-			});
-			expect(result.result.current.scale).toBe(1.1);
-		});
-
-		it("should decrease the scale by 0.1", () => {
-			act(() => {
-				result.result.current.decreaseScale();
-			});
-			expect(result.result.current.scale).toBe(0.9);
-		});
-
-		it("should not allow scale to be less than 0.1", () => {
-			// Decrease scale 10 times
-			for (let i = 0; i < 10; i++) {
-				act(() => {
-					result.result.current.decreaseScale();
-				});
-			}
-			expect(result.result.current.scale).toBe(0.1);
-		});
-
-		it("should not allow scale to be greater than 3", () => {
-			// Increase scale 20 times
-			for (let i = 0; i < 20; i++) {
-				act(() => {
-					result.result.current.increaseScale();
-				});
-			}
-			expect(result.result.current.scale).toBe(3);
-		});
-
 		it("should return the initial position", () => {
 			expect(result.result.current.position).toEqual(exampleStore.position);
 		});
@@ -327,28 +291,28 @@ describe("useStore functionality", () => {
 			act(() => {
 				result.result.current.changeX(5);
 			});
-			expect(result.result.current.position.x).toBe(5);
+			expect(result.result.current.position[0]).toBe(5);
 		});
 
 		it("should decrease the X position by 5", () => {
 			act(() => {
 				result.result.current.changeX(-5);
 			});
-			expect(result.result.current.position.x).toBe(-5);
+			expect(result.result.current.position[0]).toBe(-5);
 		});
 
 		it("should increase the Y position by 5", () => {
 			act(() => {
 				result.result.current.changeY(5);
 			});
-			expect(result.result.current.position.y).toBe(5);
+			expect(result.result.current.position[1]).toBe(5);
 		});
 
 		it("should decrease the Y position by 5", () => {
 			act(() => {
 				result.result.current.changeY(-5);
 			});
-			expect(result.result.current.position.y).toBe(-5);
+			expect(result.result.current.position[1]).toBe(-5);
 		});
 
 		it("should return the initial DPI", () => {
@@ -402,7 +366,7 @@ describe("useStore functionality", () => {
 				result.result.current.setLayers(layers);
 				result.result.current.setElements(elements);
 			});
-			expect(result.result.current.prepareForSave()).resolves.toEqual(expected);
+			expect(result.result.current.prepareForSave()).toEqual(expected);
 		});
 
 		it("should return a blob for exporting", () => {
@@ -547,7 +511,7 @@ describe("useStore functionality", () => {
 			act(() => {
 				result.result.current.setLayers([]);
 			});
-			expect(() => result.result.current.prepareForExport()).rejects.toThrow();
+			expect(() => result.result.current.prepareForExport()).toThrow();
 		});
 	});
 

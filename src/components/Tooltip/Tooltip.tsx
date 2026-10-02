@@ -7,7 +7,7 @@ import {
 	Content as TooltipContent,
 	Arrow as TooltipArrow
 } from "@radix-ui/react-tooltip";
-import clsx from "clsx";
+import cn from "@/lib/tailwind-utils";
 
 // Types
 import type { FC, ReactNode } from "react";
@@ -47,7 +47,7 @@ const Tooltip: FC<TooltipProps> = ({
 				<TooltipPortal>
 					<TooltipContent
 						side={position}
-						className={clsx(
+						className={cn(
 							"z-[999] rounded px-2 py-1 text-sm leading-none text-white bg-[#3e3e3e] border border-[#242424]",
 							"shadow-[0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)]",
 							"will-change-[transform,opacity]",

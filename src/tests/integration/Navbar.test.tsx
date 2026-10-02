@@ -73,7 +73,6 @@ describe("Navbar functionality", () => {
 
 	it("should save the file when clicking Save File from File menu", async () => {
 		renderWithProviders(<Navbar />);
-		const alertSpy = vi.spyOn(window, "alert");
 		const fileTab = screen.getByRole("menuitem", { name: "File" });
 
 		await userEvent.click(fileTab);
@@ -83,7 +82,7 @@ describe("Navbar functionality", () => {
 		await userEvent.click(saveFileOption);
 
 		await vi.waitFor(() => {
-			expect(alertSpy).toHaveBeenCalledWith("Saved!");
+			expect(screen.getByLabelText("saved-indicator")).toBeInTheDocument();
 		});
 	});
 
@@ -112,11 +111,10 @@ describe("Navbar functionality", () => {
 
 	it("should perform a save when using CTRL S", async () => {
 		renderWithProviders(<Navbar />);
-		const alertSpy = vi.spyOn(window, "alert");
 		fireEvent.keyDown(document, { key: "s", ctrlKey: true });
 
 		await vi.waitFor(() => {
-			expect(alertSpy).toHaveBeenCalledWith("Saved!");
+			expect(screen.getByLabelText("saved-indicator")).toBeInTheDocument();
 		});
 	});
 

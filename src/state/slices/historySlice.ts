@@ -13,6 +13,7 @@ export const createHistorySlice: StateCreator<
 		action: HistoryAction,
 		actionPerformed: "undo" | "redo" = "undo"
 	) {
+		const { scale } = get();
 		const { changeElementProperties, createElement, deleteElement } = get();
 		switch (action.type) {
 			case "add_element": {
@@ -39,17 +40,16 @@ export const createHistorySlice: StateCreator<
 							if (state.type === "brush" || state.type === "eraser") {
 								return {
 									...state,
-									path: state.path.map((point) => ({
-										...point,
-										x: point.x - dx,
-										y: point.y - dy
-									}))
+									path: state.path.map((point) => [
+										point[0] - dx / scale,
+										point[1] - dy / scale
+									])
 								};
 							}
 							return {
 								...state,
-								x: state.x - dx,
-								y: state.y - dy
+								x: state.x - dx / scale,
+								y: state.y - dy / scale
 							};
 						}
 
@@ -57,17 +57,16 @@ export const createHistorySlice: StateCreator<
 						if (state.type === "brush" || state.type === "eraser") {
 							return {
 								...state,
-								path: state.path.map((point) => ({
-									...point,
-									x: point.x + dx,
-									y: point.y + dy
-								}))
+								path: state.path.map((point) => [
+									point[0] + dx / scale,
+									point[1] + dy / scale
+								])
 							};
 						}
 						return {
 							...state,
-							x: state.x + dx,
-							y: state.y + dy
+							x: state.x + dx / scale,
+							y: state.y + dy / scale
 						};
 					},
 					(element) => element.layerId === layerId
@@ -99,10 +98,10 @@ export const createHistorySlice: StateCreator<
 
 		applyChanges(lastAction, "undo");
 
-		set(() => ({
+		set({
 			undoStack: undoStack.slice(1),
 			redoStack: [lastAction, ...redoStack]
-		}));
+		});
 	}
 
 	function redo() {
@@ -113,10 +112,25 @@ export const createHistorySlice: StateCreator<
 
 		applyChanges(lastAction, "redo");
 
-		set(() => ({
+		set({
 			undoStack: [lastAction, ...undoStack],
 			redoStack: redoStack.slice(1)
-		}));
+		});
+	}
+
+	function canUndo() {
+		return get().undoStack.length > 0;
+	}
+
+	function canRedo() {
+		return get().redoStack.length > 0;
+	}
+
+	function clearHistory() {
+		set({
+			undoStack: [],
+			redoStack: []
+		});
 	}
 
 	return {
@@ -124,6 +138,9 @@ export const createHistorySlice: StateCreator<
 		redoStack: [],
 		pushHistory,
 		undo,
-		redo
+		redo,
+		canUndo,
+		canRedo,
+		clearHistory
 	};
 };

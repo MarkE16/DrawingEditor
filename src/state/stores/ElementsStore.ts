@@ -1,8 +1,6 @@
 import BaseStore from "./BaseStore";
 import { CanvasElement } from "@/types";
 
-type Element = Omit<CanvasElement, "focused">;
-
 /**
  * A class for interacting with the Elements store of IndexedDB.
  */
@@ -15,7 +13,7 @@ export default class ElementsStore extends BaseStore {
 	 * @param elements Elements to add to the store.
 	 * @returns
 	 */
-	public static addElements(elements: Element[]) {
+	public static addElements(elements: CanvasElement[]) {
 		return this.add(elements);
 	}
 
@@ -25,7 +23,7 @@ export default class ElementsStore extends BaseStore {
 	 * @returns A singular element or undefined if not found
 	 */
 	public static getElement(id: string) {
-		return this.get<Element>(id);
+		return this.get<CanvasElement>(id);
 	}
 
 	/**
@@ -33,7 +31,7 @@ export default class ElementsStore extends BaseStore {
 	 * @returns The entries
 	 */
 	public static getElements() {
-		return this.get<Element>();
+		return this.get<CanvasElement>();
 	}
 
 	/**

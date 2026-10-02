@@ -7,7 +7,7 @@ import type {
 	CanvasElementType
 } from "@/types";
 
-type Predicate = (element: CanvasElement) => boolean;
+type Predicate<A> = (arg: A) => boolean;
 
 export const createCanvasElementsSlice: StateCreator<
 	SliceStores,
@@ -43,8 +43,8 @@ export const createCanvasElementsSlice: StateCreator<
 			layerId: layer.id,
 			...properties, // Override the default properties with the provided properties, if any.
 			drawType: shapeMode,
-			strokeWidth,
-			opacity
+			strokeWidth: Math.max(1, strokeWidth),
+			opacity: type === "eraser" ? 1 : opacity
 		};
 
 		set((state) => ({
@@ -56,7 +56,7 @@ export const createCanvasElementsSlice: StateCreator<
 
 	function changeElementProperties(
 		callback: (el: CanvasElement) => CanvasElement,
-		predicate: Predicate
+		predicate: Predicate<CanvasElement>
 	) {
 		const elements = get().elements;
 		const newElements = elements.map((element) => {
@@ -80,7 +80,7 @@ export const createCanvasElementsSlice: StateCreator<
 		});
 	}
 
-	function deleteElement(predicate: Predicate) {
+	function deleteElement(predicate: Predicate<CanvasElement>) {
 		const deletedIds: string[] = [];
 		set((state) => ({
 			elements: state.elements.filter((element) => {
@@ -99,7 +99,7 @@ export const createCanvasElementsSlice: StateCreator<
 		set({ elements });
 	}
 
-	function copyElement(predicate: Predicate) {
+	function copyElement(predicate: Predicate<CanvasElement>) {
 		const elements = get().elements;
 		const copiedElements = elements.filter((element) => predicate(element));
 		set({ copiedElements });

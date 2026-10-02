@@ -1,7 +1,6 @@
 // Lib
-import { useContext } from "react";
-import { StoreContext } from "@/components/StoreContext/StoreContext";
 import { useStoreWithEqualityFn } from "zustand/traditional";
+import useStoreContext from "./useStoreContext";
 
 // Types
 import type { SliceStores } from "@/types";
@@ -31,11 +30,6 @@ export default function useStore<T>(
 	selector: (state: SliceStores) => T,
 	equalityFn?: (a: T, b: T) => boolean
 ): T {
-	const store = useContext(StoreContext);
-
-	if (!store) {
-		throw new Error("useStore must be used within a StoreProvider.");
-	}
-
+	const store = useStoreContext();
 	return useStoreWithEqualityFn(store, selector, equalityFn);
 }

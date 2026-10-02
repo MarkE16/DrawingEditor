@@ -1,8 +1,8 @@
-import { CircleX as LucideCircleX } from "lucide-react";
+import { XIcon as LucideXIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 
 const Close = (props: ComponentProps<"svg">) => (
-	<LucideCircleX
+	<LucideXIcon
 		size="1em"
 		{...props}
 	/>

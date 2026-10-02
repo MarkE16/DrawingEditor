@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import type { Layer, Coordinates } from "../types";
+import type { Layer, Vector } from "../types";
 
 type CapitalizeOptions = {
 	titleCase: boolean;
@@ -83,35 +83,6 @@ function swapElements<T>(arr: T[], from: number, to: number): T[] {
 	});
 }
 
-function getCanvasScale(canvas: HTMLCanvasElement) {
-	const rect = canvas.getBoundingClientRect();
-	const scaleX = canvas.width / rect.width;
-	const scaleY = canvas.height / rect.height;
-
-	return { scaleX, scaleY };
-}
-
-/**
- * Get the position of the given X and Y coordinate relative to the given HTMLCanvasElement.
- * @param x The x-coordinate to calculate.
- * @param y The y-coordinate to calculate.
- * @param canvas The canvas element.
- * @returns The an X and Y coordinate relative to the canvas.
- */
-function getCanvasPosition(
-	x: number,
-	y: number,
-	canvas: HTMLCanvasElement
-): Coordinates {
-	const rect = canvas.getBoundingClientRect();
-	const { scaleX, scaleY } = getCanvasScale(canvas);
-
-	const computedX = (x - rect.left) * scaleX;
-	const computedY = (y - rect.top) * scaleY;
-
-	return { x: computedX, y: computedY };
-}
-
 /**
  * Navigate to a new route. This function is merely a wrapper around `window.location.href`, mainly
  * for convenience and readability.
@@ -191,12 +162,61 @@ function debounce<T, A extends unknown[]>(
 	};
 }
 
+/**
+ * Retrieves the value of a cookie by its name.
+ * @param name The cookie name.
+ * @returns The value of the cookie, or null if the cookie does not exist.
+ */
+function getCookie(name: string): string | null {
+	const regexp = new RegExp(`(^| )${name}=([^;]+)`);
+	const match = document.cookie.match(regexp);
+	return match ? decodeURIComponent(match[2]) : null;
+}
+
+function updateVector2(vector: Vector<2>, x: number, y: number) {
+	vector[0] = x;
+	vector[1] = y;
+}
+
+type OperatingSystem = "Windows" | "MacOS" | "Linux";
+
+/**
+ * Detects the operating system of the user based on the user agent string.
+ * @returns The operating system.
+ */
+function detectOperatingSystem(): OperatingSystem {
+	if (typeof window === "undefined") {
+		return "Windows"; // Default to Windows if not in a browser environment
+	}
+	const userAgent = window.navigator.userAgent.toLowerCase();
+
+	if (userAgent.indexOf("win") !== -1) return "Windows";
+	if (userAgent.indexOf("mac") !== -1) return "MacOS";
+	if (userAgent.indexOf("x11") !== -1 || userAgent.indexOf("linux") !== -1)
+		return "Linux";
+
+	throw new Error(`Unsupported operating system detected: ${userAgent}`);
+}
+
+/**
+ *
+ * @param noChange Whether visually, nothing may have not changed.
+ */
+function redrawCanvas(noChange: boolean = false) {
+	document.dispatchEvent(
+		new CustomEvent("canvas:redraw", { detail: { noChange } })
+	);
+}
+
 export {
 	capitalize,
 	createLayer,
 	swapElements,
-	getCanvasPosition,
 	navigateTo,
 	isRectIntersecting,
-	debounce
+	debounce,
+	getCookie,
+	updateVector2,
+	detectOperatingSystem,
+	redrawCanvas
 };
