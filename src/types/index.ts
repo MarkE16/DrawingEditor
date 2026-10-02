@@ -2,13 +2,14 @@ export * from "./Canvas.types";
 export * from "./History.types";
 export * from "./Slices.types";
 
-export type ImageUpdateEvent = CustomEvent<{ layer: HTMLCanvasElement }>;
+// noChange refers to the case where the canvas is redrawn but no changes were made to the elements.
+export type CanvasRedrawEvent = CustomEvent<{ noChange?: boolean }>;
 
 declare global {
 	interface Window {}
 
 	// This is so that TypeScript knows that this custom event exists globally.
 	interface DocumentEventMap {
-		imageupdate: ImageUpdateEvent;
+		"canvas:redraw": CanvasRedrawEvent;
 	}
 }

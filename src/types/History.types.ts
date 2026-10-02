@@ -1,11 +1,15 @@
-import { Coordinates } from "./index";
+import { CanvasElement } from "./index";
 
-export type HistoryAction = {
-	mode: "draw" | "erase" | "shapes";
-	path: Coordinates[];
-	layerId: string;
-	color: string;
-	drawStrength: number;
-	width: number;
-	height: number;
-};
+export type HistoryAction =
+	| {
+			type: "add_element";
+			properties: Partial<CanvasElement>;
+	  }
+	| {
+			type: "move_element";
+			properties: {
+				layerId: string;
+				dx: number;
+				dy: number;
+			};
+	  };

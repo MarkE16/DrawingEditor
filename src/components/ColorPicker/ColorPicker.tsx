@@ -1,7 +1,5 @@
 // Lib
 import { useState, useRef } from "react";
-import useStore from "@/state/hooks/useStore";
-import useLayerReferences from "@/state/hooks/useLayerReferences";
 import { parseColor } from "react-aria-components";
 
 // Components
@@ -30,28 +28,16 @@ import type { CanvasElement } from "@/types";
 
 type ColorPickerProps = {
 	label: string;
-	__for: keyof Pick<CanvasElement, "fill" | "stroke">;
+	__for: keyof Pick<CanvasElement, "color">;
 	value: string;
 };
 
 function ColorPicker({ label, __for, value }: ColorPickerProps): ReactNode {
 	const [hex, setHex] = useState<string>(parseColor(value).toString("hex"));
-	const changeElementProperties = useStore(
-		(state) => state.changeElementProperties
-	);
 	const startColor = useRef<string>(value);
-	const { getActiveLayer } = useLayerReferences();
 
 	const handleColorChange = (color: Color) => {
 		const hex = color.toString("hex");
-
-		changeElementProperties(
-			(state) => ({
-				...state,
-				[__for]: hex
-			}),
-			(element) => element.focused
-		);
 
 		setHex(hex);
 	};
@@ -67,21 +53,6 @@ function ColorPicker({ label, __for, value }: ColorPickerProps): ReactNode {
 		setHex(e.target.value);
 	};
 
-	const updatePreview = () => {
-		const activeLayer = getActiveLayer();
-
-		if (!activeLayer)
-			throw new Error("No active layer found. Cannot update layer preview.");
-
-		const ev = new CustomEvent("imageupdate", {
-			detail: {
-				layer: activeLayer
-			}
-		});
-
-		document.dispatchEvent(ev);
-	};
-
 	const onOpenChange = (isOpen: boolean) => {
 		// Closing, prepare to update the preview.
 		if (!isOpen) {
@@ -89,7 +60,7 @@ function ColorPicker({ label, __for, value }: ColorPickerProps): ReactNode {
 
 			// Only update the preview if the color has changed.
 			if (startColor.current !== value) {
-				updatePreview();
+				//...
 			}
 		} else {
 			// Opening, save the current color.

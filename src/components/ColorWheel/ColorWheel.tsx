@@ -2,7 +2,8 @@
 import {
 	ColorWheel as AriaColorWheel,
 	ColorWheelTrack as AriaColorWheelTrack,
-	ColorArea as AriaColorArea
+	ColorArea as AriaColorArea,
+	parseColor
 } from "react-aria-components";
 import ColorThumb from "@/components/ColorThumb/ColorThumb";
 import useStore from "@/state/hooks/useStore";
@@ -28,7 +29,8 @@ function ColorWheel(props: ColorWheelProps): ReactNode {
 		}))
 	);
 
-	const onChange = (color: Color) => changeColor(color.toString("hsla"));
+	const onChange = (color: Color) => changeColor(color.toString("hex"));
+	const wheelColor = parseColor(color).toString("hsl");
 
 	const COLOR_WHEEL_OUTER_RADIUS = 80;
 	const COLOR_WHEEL_INNER_RADIUS = 65;
@@ -48,7 +50,7 @@ function ColorWheel(props: ColorWheelProps): ReactNode {
 			<AriaColorWheel
 				outerRadius={COLOR_WHEEL_OUTER_RADIUS}
 				innerRadius={COLOR_WHEEL_INNER_RADIUS}
-				value={color}
+				value={wheelColor}
 				className="color-wheel"
 				data-testid="color-wheel"
 				onChange={onChange}
@@ -62,9 +64,9 @@ function ColorWheel(props: ColorWheelProps): ReactNode {
 			 * If the errors occur, check the format that the color is in.
 			 */}
 			<AriaColorArea
-				value={color}
+				value={wheelColor}
 				onChange={onChange}
-				className="outline outline-1 outline-black border-2 border-white absolute"
+				className="outline outline-1 outline-black border-2 border-white"
 				data-testid="color-area"
 				style={{
 					width: `${COLOR_AREA_WIDTH}px`,

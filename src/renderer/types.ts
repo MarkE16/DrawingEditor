@@ -23,6 +23,7 @@ export type PageContextCustom = {
 	pageProps?: PageProps;
 	urlPathname: string;
 	zustandState: Partial<SliceStores>;
+	theme: "light" | "dark" | "system";
 	exports: {
 		documentProps?: {
 			title?: string;

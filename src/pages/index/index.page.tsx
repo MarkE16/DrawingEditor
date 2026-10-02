@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import LayersStore from "@/state/stores/LayersStore";
 import ElementsStore from "@/state/stores/ElementsStore";
-import { initializeStore } from "@/state/store";
+import { initializeEditorStore } from "@/state/store";
 import useInitialEditorState from "@/state/hooks/useInitialEditorState";
 
 // Components
@@ -10,7 +10,8 @@ import Navbar from "@/components/Navbar/Navbar";
 import Main from "@/components/Main/Main";
 import ErrorBoundary from "@/components/ErrorBoundary/ErrorBoundary";
 import { StoreProvider } from "@/components/StoreContext/StoreContext";
-import { LayerReferencesProvider } from "@/components/LayerReferencesProvider/LayerReferencesProvider";
+import { CanvasReferenceProvider } from "@/components/CanvasReferenceProvider/CanvasReferenceProvider";
+import ImageElementStore from "@/state/stores/ImageElementStore";
 
 // The <head> tags
 // eslint-disable-next-line
@@ -45,17 +46,18 @@ function Page() {
 
 		LayersStore.openStore();
 		ElementsStore.openStore();
+		ImageElementStore.openStore();
 	}, []);
 
 	return (
-		<StoreProvider store={initializeStore(state)}>
-			<LayerReferencesProvider>
+		<StoreProvider store={initializeEditorStore(state)}>
+			<CanvasReferenceProvider>
 				<ErrorBoundary>
 					<Navbar />
 
 					<Main />
 				</ErrorBoundary>
-			</LayerReferencesProvider>
+			</CanvasReferenceProvider>
 		</StoreProvider>
 	);
 }

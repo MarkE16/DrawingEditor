@@ -1,174 +1,220 @@
 // Lib
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { parseColor } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 import useStoreSubscription from "@/state/hooks/useStoreSubscription";
-import useLayerReferences from "@/state/hooks/useLayerReferences";
 import useStore from "@/state/hooks/useStore";
-import * as Utils from "@/lib/utils";
-import clsx from "clsx";
+import useThrottle from "@/state/hooks/useThrottle";
+import useCanvasRedrawListener from "@/state/hooks/useCanvasRedrawListener";
+import useCanvasRef from "@/state/hooks/useCanvasRef";
+import { redrawCanvas, updateVector2 } from "@/lib/utils";
+import ElementsStore from "@/state/stores/ElementsStore";
 import LayersStore from "@/state/stores/LayersStore";
+import ImageElementStore from "@/state/stores/ImageElementStore";
+import useStoreContext from "@/state/hooks/useStoreContext";
 
 // Types
-import type { ReactNode, MouseEvent } from "react";
-import type { Layer, Coordinates } from "@/types";
-
-// Styles using Tailwind
+import type {
+	Dispatch,
+	MouseEvent as ReactMouseEvent,
+	SetStateAction
+} from "react";
+import { CanvasElementPath, Vector } from "@/types";
 
 type CanvasProps = {
-	isGrabbing: boolean;
+	setLoading: Dispatch<SetStateAction<boolean>>;
 };
 
-type DBLayer = {
-	image: Blob;
-	name: string;
-	position: number;
-	id: string;
-};
+const THROTTLE_DELAY_MS = 10; // milliseconds
 
-function Canvas({ isGrabbing }: CanvasProps): ReactNode {
+const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(function Canvas(
+	{ setLoading },
+	ref
+) {
 	const {
 		mode,
+		shape,
 		width,
 		height,
-		layers,
-		dpi,
-		scale,
-		position,
+		drawPaperCanvas,
 		changeMode,
 		changeColor,
+		createElement,
+		getActiveLayer,
+		pushHistory,
+		getPointerPosition,
+		centerCanvas,
+		setElements,
 		setLayers
 	} = useStore(
 		useShallow((state) => ({
 			mode: state.mode,
+			shape: state.shape,
 			width: state.width,
 			height: state.height,
-			layers: state.layers,
 			dpi: state.dpi,
-			scale: state.scale,
 			position: state.position,
 			changeMode: state.changeMode,
 			changeColor: state.changeColor,
+			createElement: state.createElement,
+			getActiveLayer: state.getActiveLayer,
+			pushHistory: state.pushHistory,
+			getPointerPosition: state.getPointerPosition,
+			drawPaperCanvas: state.drawPaperCanvas,
+			centerCanvas: state.centerCanvas,
+			setElements: state.setElements,
 			setLayers: state.setLayers
 		}))
 	);
+	const store = useStoreContext();
+	const { setRef } = useCanvasRef();
 	const color = useStoreSubscription((state) => state.color);
-	const drawStrength = useStoreSubscription((state) => state.drawStrength);
-	const eraserStrength = useStoreSubscription((state) => state.eraserStrength);
-
-	const { references, add } = useLayerReferences();
+	const shapeMode = useStoreSubscription((state) => state.shapeMode);
 
 	const isDrawing = useRef<boolean>(false);
-	const isMovingElement = useStoreSubscription((state) => state.elementMoving);
-	const currentPath2D = useRef<Path2D | null>(null);
-	const currentPath = useRef<Coordinates[]>([]);
-
-	const ERASER_RADIUS = 7;
+	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const currentPath2D = useRef<Path2D>(null);
+	const currentPath = useRef<CanvasElementPath[]>([]);
+	const initialPosition = useRef<Vector<2>>([0, 0]);
 
 	// Handler for when the mouse is pressed down on the canvas.
 	// This should initiate the drawing process.
-	const onMouseDown = (e: MouseEvent<HTMLCanvasElement>) => {
-		isDrawing.current =
-			(mode === "draw" || mode === "erase") && !isMovingElement.current;
+	const onMouseDown = (e: ReactMouseEvent<HTMLCanvasElement>) => {
+		// isDrawing.current =
+		// 	(mode === "draw" || mode === "erase") && !isMovingElement.current;
 
-		const activeLayer = e.currentTarget;
+		const canvas = e.currentTarget;
 
-		if (!activeLayer) throw new Error("No active layer found. This is a bug.");
+		const onCanvas = e.target === canvas || canvas.contains(e.target as Node);
 
-		const ctx = activeLayer.getContext("2d", {
+		if (!onCanvas) {
+			return;
+		}
+
+		const ctx = canvas.getContext("2d", {
 			willReadFrequently: true
 		});
 
-		// Calculate the position of the mouse relative to the canvas.
-		const { x, y } = Utils.getCanvasPosition(e.clientX, e.clientY, activeLayer);
-
-		if (mode === "draw") {
-			ctx?.beginPath();
-			currentPath2D.current = new Path2D();
-			currentPath2D.current.moveTo(x, y);
-		} else if (mode === "eye_drop" && !isGrabbing) {
-			// `.getImageData()` retreives the x and y coordinates of the pixel
-			// differently if the canvas is scaled. So, we need to multiply the
-			// x and y coordinates by the DPI to get the correct pixel.
-			const pixel = ctx!.getImageData(
-				Math.floor(x * dpi),
-				Math.floor(y * dpi),
-				1,
-				1
-			).data;
-
-			const colorStr = `rgba(${pixel[0]}, ${pixel[1]}, ${pixel[2]}, ${pixel[3]})`;
-			let color;
-
-			if (colorStr === "rgba(0, 0, 0, 0)") {
-				// If the color is transparent, we want to assume
-				// that the user wanted to select the background color
-				// which visually is white. For the color to be
-				// transparent is correct, but from a UX perspective,
-				// it's not what the user would expect. So,
-				// we'll set the color to white.
-				color = parseColor("rgba(255, 255, 255, 255)");
-			} else {
-				color = parseColor(colorStr);
-			}
-
-			// The color picker only supports HSLA, so we need to convert the color to HSLA.
-			changeColor(color.toString("hsla"));
-			changeMode("select");
+		if (!ctx) {
+			throw new Error("Couldn't get the 2D context of the canvas.");
 		}
 
-		if (mode === "draw" || mode === "erase") {
+		// Calculate the position of the mouse relative to the canvas.
+		const { x, y } = getPointerPosition(canvas, e.clientX, e.clientY);
+		const floorX = Math.floor(x);
+		const floorY = Math.floor(y);
+
+		if (!isDrawing.current) {
+			updateVector2(initialPosition.current, floorX, floorY);
+		}
+		const activeLayer = getActiveLayer();
+		isDrawing.current = !activeLayer.hidden;
+
+		if (mode === "brush" || mode === "eraser") {
+			currentPath2D.current = new Path2D();
+			currentPath2D.current.moveTo(floorX, floorY);
 			// Save the current path.
-			currentPath.current.push({ x, y });
+			currentPath.current.push([floorX, floorY]);
+		} else if (mode === "eye_drop") {
+			// `getPointerPosition` gives us the position in world coordinates,
+			// but we need the position in canvas coordinates for `getImageData`.
+			const rect = canvas.getBoundingClientRect();
+			const canvasX = Math.floor(e.clientX - rect.left);
+			const canvasY = Math.floor(e.clientY - rect.top);
+			const pixel = ctx.getImageData(canvasX, canvasY, 1, 1).data;
+
+			const colorStr = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+
+			changeColor(parseColor(colorStr).toString("hex"));
+			changeMode("move");
 		}
 	};
 
-	// Handler for when the mouse is moved on the canvas.
-	// This should handle a majority of the drawing process.
-	const onMouseMove = (e: MouseEvent<HTMLCanvasElement>) => {
+	const onMouseMove = useThrottle((e: MouseEvent) => {
 		// If the left mouse button is not pressed, then we should not draw.
 		// If the layer is hidden, we should not draw.
 		// If the user is grabbing the canvas (for moving), we should not draw.
+		const canvas = canvasRef.current;
+		if (!canvas) {
+			throw new Error("Canvas Ref is not set. This is a bug.");
+		}
 
-		if (e.buttons !== 1 || !isDrawing.current || isGrabbing) {
+		const onCanvas = e.target === canvas || canvas.contains(e.target as Node);
+
+		if (e.buttons !== 1 || !isDrawing.current || !onCanvas) {
 			return;
 		}
-		const activeLayer = e.currentTarget;
-		if (!activeLayer) throw new Error("No active layer found. This is a bug.");
-
-		const ctx = activeLayer.getContext("2d");
+		if (mode === "shapes" || !currentPath2D.current) {
+			currentPath2D.current = new Path2D();
+		}
+		const ctx = canvas.getContext("2d");
 
 		if (!ctx) throw new Error("Couldn't get the 2D context of the canvas.");
 
 		// Calculate the position of the mouse relative to the canvas.
-		const { x, y } = Utils.getCanvasPosition(e.clientX, e.clientY, activeLayer);
+		const { x, y } = getPointerPosition(canvas, e.clientX, e.clientY);
+		const floorX = Math.floor(x);
+		const floorY = Math.floor(y);
+
+		const currentShapeMode = shapeMode.current;
+
+		redrawCanvas();
+		ctx.save();
+		ctx.rect(0, 0, width, height);
+		ctx.clip();
 
 		switch (mode) {
-			case "draw": {
-				if (!currentPath2D.current) {
-					console.error("Couldn't create a Path2D object.");
-					return;
-				}
-				ctx.strokeStyle = color.current;
-				ctx.lineWidth = drawStrength.current * dpi;
-				ctx.lineCap = "round";
-				ctx.lineJoin = "round";
+			case "brush":
+			case "eraser": {
+				const lastPoint = currentPath.current[currentPath.current.length - 1];
+				const lastPointX = lastPoint[0];
+				const lastPointY = lastPoint[1];
+				const midPointX = lastPointX + (floorX - lastPointX) / 2;
+				const midPointY = lastPointY + (floorY - lastPointY) / 2;
 
-				currentPath2D.current.lineTo(x, y);
+				currentPath2D.current.quadraticCurveTo(
+					lastPointX,
+					lastPointY,
+					midPointX,
+					midPointY
+				);
 				ctx.stroke(currentPath2D.current);
 
-				currentPath.current.push({ x, y });
+				currentPath.current.push([floorX, floorY]);
 
+				drawPaperCanvas(ctx, 0, 0);
 				break;
 			}
 
-			case "erase": {
-				ctx.clearRect(
-					x - ((ERASER_RADIUS * eraserStrength.current) / 2) * dpi,
-					y - ((ERASER_RADIUS * eraserStrength.current) / 2) * dpi,
-					ERASER_RADIUS * eraserStrength.current * dpi,
-					ERASER_RADIUS * eraserStrength.current * dpi
-				);
+			case "shapes": {
+				const initX = initialPosition.current[0];
+				const initY = initialPosition.current[1];
+				const width = x - initX;
+				const height = y - initY;
+				if (shape === "circle") {
+					currentPath2D.current.ellipse(
+						Math.min(x + Math.abs(width) / 2, initX + Math.abs(width) / 2),
+						Math.min(y + Math.abs(height) / 2, initY + Math.abs(height) / 2),
+						Math.abs(width) / 2,
+						Math.abs(height) / 2,
+						0,
+						0,
+						Math.PI * 2
+					);
+				} else if (shape === "rectangle") {
+					currentPath2D.current.rect(initX, initY, width, height);
+				} else if (shape === "triangle") {
+					currentPath2D.current.moveTo(initX + width / 2, initY);
+					currentPath2D.current.lineTo(initX, initY + height);
+					currentPath2D.current.lineTo(initX + width, initY + height);
+				}
+
+				currentPath2D.current.closePath();
+				if (currentShapeMode === "fill") {
+					ctx.fill(currentPath2D.current);
+				} else {
+					ctx.stroke(currentPath2D.current);
+				}
 				break;
 			}
 
@@ -176,192 +222,141 @@ function Canvas({ isGrabbing }: CanvasProps): ReactNode {
 				break;
 			}
 		}
-	};
+		ctx.restore();
+	}, THROTTLE_DELAY_MS);
 
-	const onMouseUp = (e: MouseEvent) => {
-		if (isGrabbing) return;
+	// Handler for when the mouse is moved on the canvas.
+	// This should handle a majority of the drawing process.
+
+	const onMouseUp = (e: ReactMouseEvent<HTMLCanvasElement>) => {
 		isDrawing.current = false;
 
-		// A custom event to notify that the image of the layer
-		// displayed in the layer list needs to be updated.
-		// This event should only really be listened for by the
-		// LayerInfo component; however, other components may
-		// listen for this event if they need to update the image,
-		// if needed.
+		const activeLayer = getActiveLayer();
+		const canvas = e.currentTarget;
 
-		// Only fire the imageupdate event if the
-		// user actually drew/erased something.
-		if (currentPath.current.length > 0) {
-			const activeLayer = e.currentTarget;
+		const onCanvas = e.target === canvas || canvas.contains(e.target as Node);
 
-			if (!activeLayer)
-				throw new Error("No active layer found. This is a bug.");
-
-			const imageUpdate = new CustomEvent("imageupdate", {
-				detail: {
-					layer: activeLayer
-				}
-			});
-
-			document.dispatchEvent(imageUpdate);
+		if (!onCanvas || activeLayer.hidden) {
+			return;
 		}
 
-		if (mode === "draw" || mode === "erase") {
-			// Save the action to the history.
-			// history.addHistory({
-			// 	mode: mode as "draw" | "erase" | "shapes",
-			// 	path: currentPath.current,
-			// 	layerId: layerRef!.id,
-			// 	color,
-			// 	drawStrength
-			// });
+		const ctx = canvas.getContext("2d");
 
-			// Clear the current path.
-			currentPath.current = [];
+		if (!ctx) throw new Error("Couldn't get the 2D context of the canvas.");
+
+		const { x, y } = getPointerPosition(canvas, e.clientX, e.clientY);
+		const [initX, initY] = initialPosition.current;
+
+		let elementType;
+		let elementPayload;
+		if (mode === "shapes") {
+			elementType = shape;
+			elementPayload = {
+				x: Math.min(x, initX),
+				y: Math.min(y, initY),
+				width: Math.abs(x - initX),
+				height: Math.abs(y - initY),
+				color: color.current,
+				layerId: activeLayer.id,
+				inverted: y < initY
+			};
+		} else if (mode === "brush" || mode === "eraser") {
+			elementType = mode;
+			elementPayload = {
+				color: color.current,
+				path: currentPath.current
+			};
+		} else {
+			throw new Error(`Unsupported mode: ${mode}`);
 		}
+
+		const properties = createElement(elementType, elementPayload);
+
+		updateVector2(initialPosition.current, 0, 0);
+
+		pushHistory({
+			type: "add_element",
+			properties
+		});
+		currentPath.current = [];
+		redrawCanvas();
 	};
 
-	const onMouseEnter = (e: MouseEvent<HTMLCanvasElement>) => {
+	const onMouseEnter = (e: ReactMouseEvent<HTMLCanvasElement>) => {
 		if (e.buttons === 1) {
 			onMouseDown(e);
 		}
 	};
 
-	const onMouseLeave = () => {
-		isDrawing.current = false;
-	};
+	useImperativeHandle(ref, () => canvasRef.current!, []);
 
-	// TODO: Improve this implementation of updating the layers from the storage.
-	useEffect(() => {
-		async function updateLayers() {
-			const entries = await LayersStore.getLayers();
-
-			if (!entries) {
-				return;
-			}
-
-			const newEntries = await updateLayerState(entries);
-			updateLayerContents(newEntries);
-		}
-
-		function updateLayerState(entries: [string, DBLayer][]) {
-			return new Promise<[string, DBLayer][]>((resolve) => {
-				const newLayers: Layer[] = [];
-
-				const sorted = entries.sort((a, b) => a[1].position - b[1].position); // Sort by position, where the highest position is the top layer.
-
-				sorted.forEach((entry, i) => {
-					const [id, { name }] = entry;
-
-					newLayers.push({
-						name: name,
-						id: id,
-						active: i === 0,
-						hidden: false
-					});
-				});
-
-				if (newLayers.length === 0) {
-					return;
-				}
-
-				setLayers(newLayers);
-
-				resolve(sorted);
-			});
-		}
-
-		function updateLayerContents(entries: [string, DBLayer][]) {
-			entries.forEach((entry) => {
-				const [, { position, image }] = entry;
-				const canvas = references.current[position];
-
-				if (!canvas) return;
-
-				const ctx = canvas.getContext("2d");
-				const img = new Image();
-
-				img.onload = () => {
-					ctx!.drawImage(img, 0, 0);
-					URL.revokeObjectURL(img.src);
-
-					// A custom event to notify that the image of the layer
-					// displayed in the layer list needs to be updated.
-					const ev = new CustomEvent("imageupdate", {
-						detail: {
-							layer: canvas
-						}
-					});
-
-					document.dispatchEvent(ev);
-				};
-
-				img.src = URL.createObjectURL(image);
-			});
-		}
-
-		updateLayers();
-	}, [setLayers, references]);
+	useCanvasRedrawListener(canvasRef);
 
 	useEffect(() => {
-		const refs = references.current;
-		for (const canvas of refs) {
-			const ctx = canvas.getContext("2d");
+		document.addEventListener("mousemove", onMouseMove);
+		setRef(canvasRef.current);
+		return () => document.removeEventListener("mousemove", onMouseMove);
+	}, [onMouseMove, setRef]);
 
-			if (!ctx) return;
+	// Initially center the canvas.
+	useEffect(() => {
+		const ref = canvasRef.current;
+		if (!ref) return;
 
-			ctx.scale(dpi, dpi);
+		const persistStoreName = store.persist.getOptions().name;
+
+		if (!persistStoreName) return;
+
+		const savedStateExists = localStorage.getItem(persistStoreName) !== null;
+
+		if (!savedStateExists) {
+			centerCanvas(ref);
+		}
+	}, [centerCanvas, store]);
+
+	useEffect(() => {
+		async function updateLayersAndElements() {
+			const elements = await ElementsStore.getElements();
+			const layers = await LayersStore.getLayers();
+			await ImageElementStore.loadImages();
+
+			// There must always be at least one layer.
+			// If there are no layers, do not update,
+			// and instead use the default layer state.
+			if (layers.length > 0) {
+				setLayers(
+					layers
+						.sort((a, b) => a[1].position - b[1].position)
+						.map(([id, { name }], i) => ({
+							name,
+							id,
+							active: i === 0,
+							hidden: false
+						}))
+				);
+			}
+			setElements(elements.map(([, element]) => element));
+			setLoading(false);
+			redrawCanvas();
 		}
 
-		return () => {
-			for (const canvas of refs) {
-				const ctx = canvas.getContext("2d");
-
-				if (!ctx) return;
-
-				ctx.scale(1 / dpi, 1 / dpi);
-			}
-		};
-	}, [dpi, references]);
-
-	const transform = `translate(${position.x}px, ${position.y}px) scale(${scale})`;
+		updateLayersAndElements();
+	}, [setElements, setLayers, setLoading]);
 
 	return (
-		<>
-			{/* The main canvas. */}
-			{layers.map((layer, i) => (
-				<canvas
-					key={layer.id}
-					data-testid="canvas-layer"
-					className={clsx("absolute bg-white cursor-inherit z-0", {
-						"z-[1]": layer.active,
-						"opacity-0": layer.hidden && layers.length > 1
-					})}
-					style={{
-						width: `${width}px`,
-						height: `${height}px`,
-						transform
-					}}
-					ref={(element) => {
-						if (element !== null) {
-							add(element, i);
-						}
-					}}
-					id={layer.id}
-					width={width * dpi}
-					height={height * dpi}
-					onMouseDown={onMouseDown}
-					onMouseMove={onMouseMove}
-					onMouseUp={onMouseUp}
-					onMouseEnter={onMouseEnter}
-					onMouseLeave={onMouseLeave}
-					data-name={layer.name}
-					data-scale={scale}
-					data-dpi={dpi}
-				/>
-			))}
-		</>
+		<canvas
+			data-testid="canvas-layer"
+			id="canvas"
+			data-mode={mode}
+			data-canvas-width={width} // CSS pixels
+			data-canvas-height={height} // CSS pixels
+			className="absolute w-full h-full cursor-inherit z-0 data-[mode=move]:cursor-grab data-[mode=pan]:cursor-grab data-[mode=selection]:cursor-default data-[mode=draw]:cursor-none data-[mode=erase]:cursor-none data-[mode=zoom_in]:cursor-zoom-in data-[mode=zoom_out]:cursor-zoom-out data-[mode=text]:cursor-text data-[mode=eye_drop]:cursor-crosshair"
+			ref={canvasRef}
+			onMouseDown={onMouseDown}
+			onMouseUp={onMouseUp}
+			onMouseEnter={onMouseEnter}
+		/>
 	);
-}
+});
 
 export default Canvas;

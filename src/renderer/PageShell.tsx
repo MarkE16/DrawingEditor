@@ -1,7 +1,6 @@
 import React from "react";
 import { PageContextProvider } from "./usePageContext";
 import type { PageContext } from "./types";
-import "./PageShell.css";
 
 export { PageShell };
 
