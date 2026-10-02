@@ -1,17 +1,4 @@
-# IdeaDrawn | LiveCanvas
-
-## 🖼️ About IdeaDrawn 
-
-Welcome to IdeaDrawn, a real time, open source platform for artists, developers, and tech enthusiasts to draw, share, and collaborate on a digital canvas! Join our growing community and be part of something innovative!
-
-We're building a space where creativity thrives, and we’d love for you to be part of it! You can:
-- ✅ **Contribute Code** – Help improve features, fix bugs, or suggest enhancements.
-- 🛠 **Test New Features** – Try out the latest updates and give feedback.
-- ⭐ **Support the Project** – Click the star button to help us grow!
-
-Every contribution, big or small, makes a difference. Join us and help shape the future of IdeaDrawn! 🚀
-
-> Please note that this project is in the beginning of its development stages, so there is not an expected stable release of the software at the moment.
+DrawingEditor
 
 ## 🤠 Features 
 
