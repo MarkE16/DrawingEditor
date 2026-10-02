@@ -11,7 +11,6 @@ import { fireEvent, screen } from "@testing-library/react";
 import LayerPane from "../../components/LayerPane/LayerPane";
 import { SliceStores } from "../../types";
 import { renderWithProviders } from "../test-utils";
-import * as useLayerReferences from "../../state/hooks/useLayerReferences";
 
 // Essential so that when the component is rendered,
 // the usePageContext hook doesn't throw an error (since it's not in the browser)
@@ -22,7 +21,7 @@ vi.mock("../../renderer/usePageContext", () => ({
 const preloadedState: Partial<SliceStores> = {
 	width: 400,
 	height: 400,
-	mode: "select",
+	mode: "move",
 	scale: 1,
 	dpi: 1,
 	position: { x: 0, y: 0 },
@@ -30,22 +29,12 @@ const preloadedState: Partial<SliceStores> = {
 		{ name: "Layer 1", id: "1", active: true, hidden: false },
 		{ name: "Layer 2", id: "2", active: false, hidden: false }
 	],
-	color: "hsla(0, 0%, 100%, 1)",
-	drawStrength: 5,
-	eraserStrength: 3
+	color: "#000000",
+	strokeWidth: 5
 };
 
 describe("LayerPane functionality", () => {
 	let originalConfirm: (message?: string) => boolean;
-	vi.spyOn(useLayerReferences, "default").mockReturnValue({
-		references: { current: [] },
-		add: vi.fn(),
-		remove: vi.fn(),
-		// Mocked so that it doesn't throw an error. We don't have access to the
-		// references since they're not rendered in the test.
-		setActiveIndex: vi.fn(),
-		getActiveLayer: vi.fn()
-	});
 
 	beforeAll(() => {
 		originalConfirm = window.confirm;
@@ -76,20 +65,20 @@ describe("LayerPane functionality", () => {
 
 		const [layer1, layer2] = screen.getAllByLabelText("Layer Info");
 
-		expect(layer1).toHaveClass("active");
-		expect(layer2).not.toHaveClass("active");
+		expect(layer1).toHaveClass("bg-[#d1836a]");
+		expect(layer2).not.toHaveClass("bg-[#d1836a]");
 	});
 
 	it("should switch active layer on click", () => {
 		const [layer1, layer2] = screen.getAllByLabelText("Layer Info");
 
-		expect(layer1).toHaveClass("active");
-		expect(layer2).not.toHaveClass("active");
+		expect(layer1).toHaveClass("bg-[#d1836a]");
+		expect(layer2).not.toHaveClass("bg-[#d1836a]");
 
 		fireEvent.click(layer2);
 
-		expect(layer1).not.toHaveClass("active");
-		expect(layer2).toHaveClass("active");
+		expect(layer1).not.toHaveClass("bg-[#d1836a]");
+		expect(layer2).toHaveClass("bg-[#d1836a]");
 	});
 
 	it("should add a new layer when clicking the add layer button", () => {

@@ -213,7 +213,8 @@ describe("Reference Window functionality", () => {
 		fireEvent.click(pin);
 
 		const window = screen.getByTestId("reference-window");
-		expect(window).toHaveClass("pinned");
+		expect(window).toHaveClass("relative");
+		expect(window).not.toHaveClass("absolute");
 	});
 
 	it("should flip the image", () => {

@@ -6,48 +6,47 @@ import { renderHook } from "@testing-library/react";
 import useStore from "../../state/hooks/useStore";
 import type { CanvasElement, HistoryAction, SliceStores } from "../../types";
 import { MODES } from "../../state/store";
-import { getCanvasPosition } from "../../lib/utils";
 
 const exampleStore: SliceStores = {
+	background: "#ffffff",
 	width: 400,
 	height: 400,
 	shape: "rectangle",
-	mode: "select",
-	drawStrength: 5,
-	eraserStrength: 3,
+	mode: "move",
+	strokeWidth: 5,
+	opacity: 1,
+	shapeMode: "fill",
 	dpi: 1,
-	color: "hsla(0, 0%, 0%, 1)",
+	color: "#000000",
 	scale: 1,
-	position: { x: 0, y: 0 },
+	position: [0, 0],
 	layers: [
 		{ name: "Layer 1", id: expect.any(String), active: true, hidden: false }
 	],
+	currentLayer: 0,
 	elements: [],
 	copiedElements: [],
-	elementMoving: false,
 	undoStack: [],
 	redoStack: [],
 	referenceWindowEnabled: false,
 	changeMode: expect.any(Function),
 	changeColor: expect.any(Function),
 	setLayers: expect.any(Function),
-	increaseScale: expect.any(Function),
-	decreaseScale: expect.any(Function),
 	setPosition: expect.any(Function),
 	changeX: expect.any(Function),
 	changeY: expect.any(Function),
 	changeShape: expect.any(Function),
 	changeDimensions: expect.any(Function),
 	changeDPI: expect.any(Function),
-	changeColorAlpha: expect.any(Function),
-	changeDrawStrength: expect.any(Function),
-	changeEraserStrength: expect.any(Function),
+	changeOpacity: expect.any(Function),
+	changeShapeMode: expect.any(Function),
+	getActiveLayer: expect.any(Function),
+	changeStrokeWidth: expect.any(Function),
 	moveLayerUp: expect.any(Function),
 	moveLayerDown: expect.any(Function),
 	createLayer: expect.any(Function),
 	changeElementProperties: expect.any(Function),
 	deleteElement: expect.any(Function),
-	updateMovingState: expect.any(Function),
 	undo: expect.any(Function),
 	redo: expect.any(Function),
 	deleteLayer: expect.any(Function),
@@ -55,16 +54,15 @@ const exampleStore: SliceStores = {
 	toggleLayerVisibility: expect.any(Function),
 	renameLayer: expect.any(Function),
 	removeLayer: expect.any(Function),
-	focusElement: expect.any(Function),
-	unfocusElement: expect.any(Function),
 	createElement: expect.any(Function),
 	setElements: expect.any(Function),
 	copyElement: expect.any(Function),
 	pasteElement: expect.any(Function),
-	push: expect.any(Function),
+	pushHistory: expect.any(Function),
 	toggleReferenceWindow: expect.any(Function),
 	prepareForExport: expect.any(Function),
-	prepareForSave: expect.any(Function)
+	prepareForSave: expect.any(Function),
+	drawCanvas: expect.any(Function)
 };
 
 describe("useStore functionality", () => {
@@ -160,80 +158,37 @@ describe("useStore functionality", () => {
 		});
 
 		it("should properly update the color", () => {
-			const newColor = "hsla(170, 40%, 58%, 0.5)";
+			const newColor = "#FF0000";
 			act(() => {
 				result.result.current.changeColor(newColor);
 			});
 			expect(result.result.current.color).toBe(newColor);
 		});
 
-		it("should throw if not given a hsl/a value", () => {
-			const error =
-				"Invalid color format passed into state. Pass in a valid HSL color string, not rgb.";
-
-			const newColor = "rgb(255, 0, 0)";
-
-			expect(() => {
-				act(() => {
-					result.result.current.changeColor(newColor);
-				});
-			}).toThrowError(error);
+		it("should return the initial stroke width", () => {
+			expect(result.result.current.strokeWidth).toBe(exampleStore.strokeWidth);
 		});
 
-		it("should return the initial draw strength", () => {
-			expect(result.result.current.drawStrength).toBe(
-				exampleStore.drawStrength
-			);
+		it("should properly update the stroke width", () => {
+			const newWidth = 10;
+			act(() => {
+				result.result.current.changeStrokeWidth(newWidth);
+			});
+			expect(result.result.current.strokeWidth).toBe(newWidth);
 		});
 
-		it("should properly update the draw strength", () => {
-			const newStrength = 10;
+		it("should not allow stroke width to be outside 1-100", () => {
+			let newWidth = 101;
 			act(() => {
-				result.result.current.changeDrawStrength(newStrength);
+				result.result.current.changeStrokeWidth(newWidth);
 			});
-			expect(result.result.current.drawStrength).toBe(newStrength);
-		});
+			expect(result.result.current.strokeWidth).toBe(100);
 
-		it("should not allow draw strength to be outside 1-15", () => {
-			let newStrength = 20;
+			newWidth = 0;
 			act(() => {
-				result.result.current.changeDrawStrength(newStrength);
+				result.result.current.changeStrokeWidth(newWidth);
 			});
-			expect(result.result.current.drawStrength).toBe(15);
-
-			newStrength = 0;
-			act(() => {
-				result.result.current.changeDrawStrength(newStrength);
-			});
-			expect(result.result.current.drawStrength).toBe(1);
-		});
-
-		it("should return the initial eraser strength", () => {
-			expect(result.result.current.eraserStrength).toBe(
-				exampleStore.eraserStrength
-			);
-		});
-
-		it("should properly update the eraser strength", () => {
-			const newStrength = 10;
-			act(() => {
-				result.result.current.changeEraserStrength(newStrength);
-			});
-			expect(result.result.current.eraserStrength).toBe(newStrength);
-		});
-
-		it("should not allow eraser strength to be outside 3-10", () => {
-			let newStrength = 20;
-			act(() => {
-				result.result.current.changeEraserStrength(newStrength);
-			});
-			expect(result.result.current.eraserStrength).toBe(10);
-
-			newStrength = 2;
-			act(() => {
-				result.result.current.changeEraserStrength(newStrength);
-			});
-			expect(result.result.current.eraserStrength).toBe(3);
+			expect(result.result.current.strokeWidth).toBe(1);
 		});
 
 		it("should return the initial layer", () => {
@@ -317,42 +272,8 @@ describe("useStore functionality", () => {
 			expect(result.result.current.layers).toEqual(newLayers);
 		});
 
-		it("should return the inital scale", () => {
+		it("should return the initial scale", () => {
 			expect(result.result.current.scale).toBe(exampleStore.scale);
-		});
-
-		it("should increase the scale by 0.1", () => {
-			act(() => {
-				result.result.current.increaseScale();
-			});
-			expect(result.result.current.scale).toBe(1.1);
-		});
-
-		it("should decrease the scale by 0.1", () => {
-			act(() => {
-				result.result.current.decreaseScale();
-			});
-			expect(result.result.current.scale).toBe(0.9);
-		});
-
-		it("should not allow scale to be less than 0.1", () => {
-			// Decrease scale 10 times
-			for (let i = 0; i < 10; i++) {
-				act(() => {
-					result.result.current.decreaseScale();
-				});
-			}
-			expect(result.result.current.scale).toBe(0.1);
-		});
-
-		it("should not allow scale to be greater than 3", () => {
-			// Increase scale 20 times
-			for (let i = 0; i < 20; i++) {
-				act(() => {
-					result.result.current.increaseScale();
-				});
-			}
-			expect(result.result.current.scale).toBe(3);
 		});
 
 		it("should return the initial position", () => {
@@ -370,28 +291,28 @@ describe("useStore functionality", () => {
 			act(() => {
 				result.result.current.changeX(5);
 			});
-			expect(result.result.current.position.x).toBe(5);
+			expect(result.result.current.position[0]).toBe(5);
 		});
 
 		it("should decrease the X position by 5", () => {
 			act(() => {
 				result.result.current.changeX(-5);
 			});
-			expect(result.result.current.position.x).toBe(-5);
+			expect(result.result.current.position[0]).toBe(-5);
 		});
 
 		it("should increase the Y position by 5", () => {
 			act(() => {
 				result.result.current.changeY(5);
 			});
-			expect(result.result.current.position.y).toBe(5);
+			expect(result.result.current.position[1]).toBe(5);
 		});
 
 		it("should decrease the Y position by 5", () => {
 			act(() => {
 				result.result.current.changeY(-5);
 			});
-			expect(result.result.current.position.y).toBe(-5);
+			expect(result.result.current.position[1]).toBe(-5);
 		});
 
 		it("should return the initial DPI", () => {
@@ -410,14 +331,14 @@ describe("useStore functionality", () => {
 				{
 					name: "Layer 1",
 					id: "1234-5678-9123-4567",
-					image: expect.any(Blob),
-					position: 0
+					active: true,
+					hidden: false
 				},
 				{
 					name: "Layer 3",
 					id: "1234-5678-9123-4569",
-					image: expect.any(Blob),
-					position: 1
+					active: false,
+					hidden: false
 				}
 			];
 			const elements: CanvasElement[] = [
@@ -428,52 +349,27 @@ describe("useStore functionality", () => {
 					y: 10,
 					width: 100,
 					height: 100,
-					fill: "#000000",
-					stroke: "#000000",
-					focused: false,
+					color: "#000000",
+					inverted: false,
+					path: [],
+					opacity: 1,
+					strokeWidth: 5,
+					drawType: "fill",
 					layerId: "1234-5678-9123-4567"
 				}
 			];
-			const layersAsCanvas = layers.map((layer) => {
-				const canvas = document.createElement("canvas");
-				canvas.width = 400;
-				canvas.height = 400;
-				canvas.id = layer.id;
-				canvas.setAttribute("data-name", layer.name);
-				return canvas;
-			});
-			const elementsWithoutFocused = elements.map((element) => {
-				//eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const { focused, ...rest } = element;
-				return rest;
-			});
 			const expected = {
 				layers,
-				elements: elementsWithoutFocused
+				elements
 			};
 			act(() => {
+				result.result.current.setLayers(layers);
 				result.result.current.setElements(elements);
 			});
-			expect(
-				result.result.current.prepareForSave(layersAsCanvas)
-			).resolves.toEqual(expected);
+			expect(result.result.current.prepareForSave()).toEqual(expected);
 		});
 
 		it("should return a blob for exporting", () => {
-			const layers = [
-				{
-					name: "Layer 1",
-					id: "1234-5678-9123-4567",
-					image: expect.any(Blob),
-					position: 0
-				},
-				{
-					name: "Layer 3",
-					id: "1234-5678-9123-4569",
-					image: expect.any(Blob),
-					position: 1
-				}
-			];
 			const elements: CanvasElement[] = [
 				{
 					id: "1234-5678-9123-4567",
@@ -482,49 +378,28 @@ describe("useStore functionality", () => {
 					y: 10,
 					width: 100,
 					height: 100,
-					fill: "#000000",
-					stroke: "#000000",
-					focused: false,
+					color: "#000000",
+					inverted: false,
+					path: [],
+					opacity: 1,
+					strokeWidth: 5,
+					drawType: "fill",
 					layerId: "1234-5678-9123-4567"
 				}
 			];
-			const layersAsCanvas = layers.map((layer) => {
-				const canvas = document.createElement("canvas");
-				canvas.width = 400;
-				canvas.height = 400;
-				canvas.id = layer.id;
-				canvas.setAttribute("data-name", layer.name);
-				canvas.setAttribute("data-dpi", "1");
-				return canvas;
-			});
 			act(() => {
 				result.result.current.setElements(elements);
 			});
-			expect(
-				result.result.current.prepareForExport(layersAsCanvas)
-			).resolves.toEqual(expect.any(Blob));
+			expect(result.result.current.prepareForExport()).resolves.toEqual(
+				expect.any(Blob)
+			);
 		});
 
 		it("should render the elements in the correct positions relative to the canvas", async () => {
-			const mockCanvasBoundingClientRect: DOMRect = {
-				x: 110.5,
-				y: 175.3333282470703,
-				width: 400,
-				height: 400,
-				top: 175.3333282470703,
-				right: 510.5,
-				bottom: 575.3333282470703,
-				left: 110.5,
-				toJSON: vi.fn()
-			};
 			const canvas = document.createElement("canvas");
-			const subCanvas = document.createElement("canvas");
 			canvas.width = 400;
 			canvas.height = 400;
 			canvas.id = "1234-5678-9123-4567";
-			canvas.setAttribute("data-name", "Layer 1");
-			canvas.setAttribute("data-dpi", "1");
-
 			const elements: CanvasElement[] = [
 				{
 					id: "1234-5678-9123-4567",
@@ -533,9 +408,12 @@ describe("useStore functionality", () => {
 					y: 10,
 					width: 100,
 					height: 100,
-					fill: "#000000",
-					stroke: "#000000",
-					focused: false,
+					color: "#000000",
+					inverted: false,
+					path: [],
+					opacity: 1,
+					strokeWidth: 5,
+					drawType: "fill",
 					layerId: "1234-5678-9123-4567"
 				},
 				{
@@ -545,9 +423,12 @@ describe("useStore functionality", () => {
 					y: 20,
 					width: 100,
 					height: 100,
-					fill: "#000000",
-					stroke: "#000000",
-					focused: false,
+					color: "#000000",
+					inverted: false,
+					path: [],
+					opacity: 1,
+					strokeWidth: 5,
+					drawType: "fill",
 					layerId: "1234-5678-9123-4567"
 				},
 				{
@@ -557,23 +438,23 @@ describe("useStore functionality", () => {
 					y: 30,
 					width: 100,
 					height: 100,
-					fill: "#000000",
-					stroke: "#000000",
-					focused: false,
+					color: "#000000",
+					inverted: false,
+					path: [],
+					opacity: 1,
+					strokeWidth: 5,
+					drawType: "fill",
 					layerId: "1234-5678-9123-4567"
 				}
 			];
 
-			const ctx = subCanvas.getContext("2d");
+			const ctx = canvas.getContext("2d");
 
 			if (!ctx) {
 				throw new Error("Canvas context not found.");
 			}
 
-			vi.spyOn(document, "createElement").mockReturnValue(subCanvas);
-			vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
-				mockCanvasBoundingClientRect
-			);
+			vi.spyOn(document, "createElement").mockReturnValue(canvas);
 
 			const strokeSpy = vi.spyOn(ctx, "stroke");
 			const fillSpy = vi.spyOn(ctx, "fill");
@@ -587,78 +468,50 @@ describe("useStore functionality", () => {
 				result.result.current.setElements(elements);
 			});
 
-			await result.result.current.prepareForExport([canvas]);
+			await result.result.current.prepareForExport();
 
 			for (const element of elements) {
 				const { x, y, width, height, type } = element;
-				const { x: startX, y: startY } = getCanvasPosition(x, y, canvas);
-				const { x: endX, y: endY } = getCanvasPosition(
-					x + width,
-					y + height,
-					canvas
-				);
-
-				const realWidth = endX - startX;
-				const realHeight = endY - startY;
 
 				switch (type) {
 					case "rectangle":
-						expect(strokeRectSpy).toHaveBeenCalledWith(
-							startX,
-							startY,
-							realWidth,
-							realHeight
-						);
-						expect(fillRectSpy).toHaveBeenCalledWith(
-							startX,
-							startY,
-							realWidth,
-							realHeight
-						);
+						expect(fillRectSpy).toHaveBeenCalledWith(x, y, width, height);
 						break;
 					case "circle":
 						expect(ellipseSpy).toHaveBeenCalledWith(
-							startX + realWidth / 2,
-							startY + realHeight / 2,
-							realWidth / 2,
-							realHeight / 2,
+							x + width / 2,
+							y + height / 2,
+							width / 2,
+							height / 2,
 							0,
 							0,
 							Math.PI * 2
 						);
 						break;
 					case "triangle":
-						expect(moveToSpy).toHaveBeenCalledWith(
-							startX + realWidth / 2,
-							startY
-						);
-						expect(lineToSpy).toHaveBeenCalledWith(
-							startX + realWidth,
-							startY + realHeight
-						);
-						expect(lineToSpy).toHaveBeenCalledWith(startX, startY + realHeight);
+						expect(moveToSpy).toHaveBeenCalledWith(x + width / 2, y);
+						expect(lineToSpy).toHaveBeenCalledWith(x + width, y + height);
+						expect(lineToSpy).toHaveBeenCalledWith(x, y + height);
 						break;
 					default:
 						break;
 				}
 			}
 
-			expect(strokeRectSpy).toHaveBeenCalledTimes(1);
-			// FillRect is called twice because the canvas is drawn a white background first.
-			// Then, any rectangles are drawn on top of that.
+			expect(strokeRectSpy).toHaveBeenCalledTimes(0); // Since all rectangles use drawType="fill"
+			// FillRect is called multiple times:
+			// - Once for each rectangle element (1)
+			// - Once for the background
 			expect(fillRectSpy).toHaveBeenCalledTimes(2);
-			expect(fillSpy).toHaveBeenCalledTimes(2);
-			expect(strokeSpy).toHaveBeenCalledTimes(2);
-		});
-
-		it("should throw if not given layers to save", () => {
-			expect(() => result.result.current.prepareForSave([])).rejects.toThrow();
+			expect(fillSpy).toHaveBeenCalledTimes(2); // For circle and triangle
+			expect(strokeSpy).toHaveBeenCalledTimes(0); // Since all elements use drawType="fill"
 		});
 
 		it("should throw if not given layers to export", () => {
-			expect(() =>
-				result.result.current.prepareForExport([])
-			).rejects.toThrow();
+			act(() => {
+				result.result.current.setLayers([]);
+			});
+			expect(() => result.result.current.prepareForExport()).toThrow();
 		});
 	});
 
@@ -668,18 +521,21 @@ describe("useStore functionality", () => {
 			expect(result.result.current.redoStack).toEqual(exampleStore.redoStack);
 		});
 
-		it("should push to the history", () => {
+		it("should push to the history when creating an element", () => {
 			const action: HistoryAction = {
-				mode: "draw",
-				color: "hsla(0, 0%, 0%, 1)",
-				drawStrength: 5,
-				path: [],
-				width: 400,
-				height: 400,
-				layerId: "1234-5678-9123-4567"
+				type: "add_element",
+				properties: {
+					type: "rectangle",
+					x: 10,
+					y: 10,
+					width: 100,
+					height: 100,
+					color: "#000000",
+					layerId: "1234-5678-9123-4567"
+				}
 			};
 			act(() => {
-				result.result.current.push(action);
+				result.result.current.pushHistory(action);
 			});
 			expect(result.result.current.undoStack).toEqual([action]);
 			expect(result.result.current.redoStack).toEqual([]);
@@ -687,17 +543,20 @@ describe("useStore functionality", () => {
 
 		it("should undo the last action", () => {
 			const action: HistoryAction = {
-				mode: "draw",
-				color: "hsla(0, 0%, 0%, 1)",
-				drawStrength: 5,
-				path: [],
-				width: 400,
-				height: 400,
-				layerId: "1234-5678-9123-4567"
+				type: "add_element",
+				properties: {
+					type: "rectangle",
+					x: 10,
+					y: 10,
+					width: 100,
+					height: 100,
+					color: "#000000",
+					layerId: "1234-5678-9123-4567"
+				}
 			};
 
 			act(() => {
-				result.result.current.push(action);
+				result.result.current.pushHistory(action);
 				result.result.current.undo();
 			});
 
@@ -707,17 +566,20 @@ describe("useStore functionality", () => {
 
 		it("should redo the last action", () => {
 			const action: HistoryAction = {
-				mode: "draw",
-				color: "hsla(0, 0%, 0%, 1)",
-				drawStrength: 5,
-				path: [],
-				width: 400,
-				height: 400,
-				layerId: "1234-5678-9123-4567"
+				type: "add_element",
+				properties: {
+					type: "rectangle",
+					x: 10,
+					y: 10,
+					width: 100,
+					height: 100,
+					color: "#000000",
+					layerId: "1234-5678-9123-4567"
+				}
 			};
 
 			act(() => {
-				result.result.current.push(action);
+				result.result.current.pushHistory(action);
 				result.result.current.undo();
 				result.result.current.redo();
 			});
@@ -741,6 +603,52 @@ describe("useStore functionality", () => {
 			expect(result.result.current.undoStack).toEqual([]);
 			expect(result.result.current.redoStack).toEqual([]);
 		});
+
+		it("should call the appropriate functions when going through history of adding elements", () => {
+			const elementPayload: Partial<CanvasElement> = {
+				type: "rectangle",
+				x: 10,
+				y: 10,
+				width: 100,
+				height: 100,
+				color: "#000000",
+				layerId: "1234-5678-9123-4567"
+			};
+			let returnedElement: CanvasElement | null = null;
+
+			act(() => {
+				// We need to manually create the element first before pushing to history.
+				returnedElement = result.result.current.createElement(
+					"rectangle",
+					elementPayload
+				);
+				result.result.current.pushHistory({
+					type: "add_element",
+					properties: returnedElement
+				});
+			});
+
+			const createSpy = vi.spyOn(result.result.current, "createElement");
+			const deleteSpy = vi.spyOn(result.result.current, "deleteElement");
+
+			// Let's undo.
+			act(() => {
+				result.result.current.undo();
+			});
+			expect(deleteSpy).toHaveBeenCalledTimes(1);
+			expect(createSpy).not.toHaveBeenCalled();
+
+			// Now let's redo.
+			act(() => {
+				result.result.current.redo();
+			});
+
+			//eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { type, ...rest } = returnedElement || ({} as CanvasElement);
+
+			expect(createSpy).toHaveBeenCalledWith("rectangle", rest);
+			expect(deleteSpy).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe("Element store functionality", () => {
@@ -754,17 +662,20 @@ describe("useStore functionality", () => {
 					layerId: "1234-5678-9123-4567"
 				});
 			});
-			expect(result.result.current.elements).toEqual([
+			expect(result.result.current.elements).toEqual<CanvasElement[]>([
 				{
 					id: expect.any(String),
 					type: "rectangle",
-					x: NaN,
-					y: NaN,
+					x: 0,
+					y: 0,
 					width: 100,
 					height: 100,
-					fill: "#000000",
-					stroke: "#000000",
-					focused: false,
+					color: "#000000",
+					inverted: false,
+					path: [],
+					opacity: 1,
+					strokeWidth: 5,
+					drawType: "fill",
 					layerId: "1234-5678-9123-4567"
 				}
 			]);
@@ -778,9 +689,12 @@ describe("useStore functionality", () => {
 				y: 10,
 				width: 100,
 				height: 100,
-				fill: "#000000",
-				stroke: "#000000",
-				focused: false,
+				strokeWidth: 5,
+				color: "#000000",
+				inverted: false,
+				path: [],
+				opacity: 1,
+				drawType: "fill",
 				layerId: "1234-5678-9123-4567"
 			};
 			act(() => {
@@ -797,9 +711,12 @@ describe("useStore functionality", () => {
 				y: 10,
 				width: 100,
 				height: 100,
-				fill: "#000000",
-				stroke: "#000000",
-				focused: false,
+				strokeWidth: 5,
+				color: "#000000",
+				inverted: false,
+				path: [],
+				opacity: 1,
+				drawType: "fill",
 				layerId: "1234-5678-9123-4567",
 				text: {
 					size: 16,
@@ -859,89 +776,6 @@ describe("useStore functionality", () => {
 			expect(result.result.current.elements).toHaveLength(1);
 		});
 
-		it("should focus an element", () => {
-			act(() => {
-				result.result.current.createElement("rectangle", {
-					layerId: "1234-5678-9123-4567"
-				});
-			});
-			let element = result.result.current.elements[0];
-			expect(element.focused).toBe(false);
-
-			act(() => {
-				result.result.current.focusElement((el) => el.id === element.id);
-			});
-
-			element = result.result.current.elements[0];
-
-			expect(element.focused).toBe(true);
-		});
-
-		it("should not focus an element if id doesn't exist", () => {
-			act(() => {
-				result.result.current.createElement("rectangle", {
-					layerId: "1234-5678-9123-4567"
-				});
-			});
-			let element = result.result.current.elements[0];
-			expect(element.focused).toBe(false);
-
-			act(() => {
-				result.result.current.focusElement((el) => el.id === "1");
-			});
-
-			element = result.result.current.elements[0];
-
-			expect(element.focused).toBe(false);
-		});
-
-		it("should unfocus an element", () => {
-			act(() => {
-				result.result.current.createElement("rectangle", {
-					layerId: "1234-5678-9123-4567"
-				});
-			});
-			let element = result.result.current.elements[0];
-
-			act(() => {
-				result.result.current.focusElement((el) => el.id === element.id);
-			});
-
-			element = result.result.current.elements[0];
-			expect(element.focused).toBe(true);
-
-			act(() => {
-				result.result.current.unfocusElement((el) => el.id === element.id);
-			});
-
-			element = result.result.current.elements[0];
-			expect(element.focused).toBe(false);
-		});
-
-		it("should not unfocus an element if id doesn't exist", () => {
-			act(() => {
-				result.result.current.createElement("rectangle", {
-					layerId: "1234-5678-9123-4567"
-				});
-			});
-
-			let element = result.result.current.elements[0];
-
-			act(() => {
-				result.result.current.focusElement((el) => el.id === element.id);
-			});
-
-			element = result.result.current.elements[0];
-			expect(element.focused).toBe(true);
-
-			act(() => {
-				result.result.current.unfocusElement((el) => el.id === "1");
-			});
-
-			element = result.result.current.elements[0];
-			expect(element.focused).toBe(true);
-		});
-
 		it("should change element properties", () => {
 			act(() => {
 				result.result.current.createElement("rectangle", {
@@ -950,20 +784,20 @@ describe("useStore functionality", () => {
 			});
 
 			let element = result.result.current.elements[0];
-			expect(element.stroke).toBe("#000000");
+			expect(element.color).toBe("#000000");
 
 			act(() => {
 				result.result.current.changeElementProperties(
 					(state) => ({
 						...state,
-						stroke: "#ffffff"
+						color: "#ffffff"
 					}),
 					(el) => el.id === element.id
 				);
 			});
 
 			element = result.result.current.elements[0];
-			expect(element.stroke).toBe("#ffffff");
+			expect(element.color).toBe("#ffffff");
 		});
 
 		it("should not change element properties if id doesn't exist", () => {
@@ -974,94 +808,20 @@ describe("useStore functionality", () => {
 			});
 
 			let element = result.result.current.elements[0];
-			expect(element.stroke).toBe("#000000");
+			expect(element.color).toBe("#000000");
 
 			act(() => {
 				result.result.current.changeElementProperties(
 					(state) => ({
 						...state,
-						stroke: "#ffffff"
+						color: "#ffffff"
 					}),
 					(el) => el.id === "1"
 				);
 			});
 
 			element = result.result.current.elements[0];
-			expect(element.stroke).toBe("#000000");
-		});
-
-		it("should copy and paste an unfocused element", () => {
-			act(() => {
-				result.result.current.createElement("rectangle", {
-					layerId: "1234-5678-9123-4567"
-				});
-			});
-
-			const element = result.result.current.elements[0];
-			expect(result.result.current.copiedElements).toEqual([]);
-
-			act(() => {
-				result.result.current.copyElement((el) => el.id === element.id);
-			});
-
-			expect(result.result.current.copiedElements).toEqual([element]);
-
-			act(() => {
-				result.result.current.pasteElement();
-			});
-
-			const newElement = {
-				...element,
-				x: element.x + 10,
-				y: element.y + 10,
-				id: expect.any(String)
-			};
-
-			expect(result.result.current.elements).toEqual([element, newElement]);
-			expect(result.result.current.copiedElements).toEqual([newElement]);
-		});
-
-		it("should copy and paste a focused element", () => {
-			act(() => {
-				result.result.current.createElement("rectangle", {
-					layerId: "1234-5678-9123-4567"
-				});
-			});
-
-			let element = result.result.current.elements[0];
-			expect(result.result.current.copiedElements).toEqual([]);
-
-			act(() => {
-				result.result.current.focusElement((el) => el.id === element.id);
-				result.result.current.copyElement((el) => el.id === element.id);
-			});
-
-			element = result.result.current.elements[0];
-
-			expect(result.result.current.copiedElements).toEqual([element]);
-
-			act(() => {
-				result.result.current.pasteElement();
-			});
-
-			const newElement = {
-				...element,
-				x: element.x + 10,
-				y: element.y + 10,
-				id: expect.any(String)
-			};
-
-			expect(result.result.current.elements).toEqual([element, newElement]);
-			expect(result.result.current.copiedElements).toEqual([newElement]);
-		});
-
-		it("should throw if a layerId is not provided when creating element", () => {
-			const error = "Cannot create element: No existing layer.";
-			expect(() => {
-				act(() => {
-					result.result.current.createElement("rectangle");
-				});
-			}).toThrowError(error);
+			expect(element.color).toBe("#000000");
 		});
 
 		it("should throw if text properties are not provided when creating text element", () => {

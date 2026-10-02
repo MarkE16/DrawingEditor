@@ -1,7 +1,5 @@
 // Lib
 import { useState, useRef } from "react";
-import useStore from "@/state/hooks/useStore";
-import useLayerReferences from "@/state/hooks/useLayerReferences";
 import { parseColor } from "react-aria-components";
 
 // Components
@@ -20,7 +18,7 @@ import {
 import ColorThumb from "../ColorThumb/ColorThumb";
 import ColorField from "../ColorField/ColorField";
 
-// Styles
+// Styles - CSS for ColorSlider and Tailwind for everything else
 import "./ColorPicker.styles.css";
 
 // Types
@@ -30,28 +28,16 @@ import type { CanvasElement } from "@/types";
 
 type ColorPickerProps = {
 	label: string;
-	__for: keyof Pick<CanvasElement, "fill" | "stroke">;
+	__for: keyof Pick<CanvasElement, "color">;
 	value: string;
 };
 
 function ColorPicker({ label, __for, value }: ColorPickerProps): ReactNode {
 	const [hex, setHex] = useState<string>(parseColor(value).toString("hex"));
-	const changeElementProperties = useStore(
-		(state) => state.changeElementProperties
-	);
 	const startColor = useRef<string>(value);
-	const { getActiveLayer } = useLayerReferences();
 
 	const handleColorChange = (color: Color) => {
 		const hex = color.toString("hex");
-
-		changeElementProperties(
-			(state) => ({
-				...state,
-				[__for]: hex
-			}),
-			(element) => element.focused
-		);
 
 		setHex(hex);
 	};
@@ -67,21 +53,6 @@ function ColorPicker({ label, __for, value }: ColorPickerProps): ReactNode {
 		setHex(e.target.value);
 	};
 
-	const updatePreview = () => {
-		const activeLayer = getActiveLayer();
-
-		if (!activeLayer)
-			throw new Error("No active layer found. Cannot update layer preview.");
-
-		const ev = new CustomEvent("imageupdate", {
-			detail: {
-				layer: activeLayer
-			}
-		});
-
-		document.dispatchEvent(ev);
-	};
-
 	const onOpenChange = (isOpen: boolean) => {
 		// Closing, prepare to update the preview.
 		if (!isOpen) {
@@ -89,7 +60,7 @@ function ColorPicker({ label, __for, value }: ColorPickerProps): ReactNode {
 
 			// Only update the preview if the color has changed.
 			if (startColor.current !== value) {
-				updatePreview();
+				//...
 			}
 		} else {
 			// Opening, save the current color.
@@ -109,26 +80,26 @@ function ColorPicker({ label, __for, value }: ColorPickerProps): ReactNode {
 			<AriaColorPicker>
 				<DialogTrigger onOpenChange={onOpenChange}>
 					<Button
-						className="color-picker"
+						className="flex items-center gap-2 bg-transparent border-0 p-0 m-0 mx-[5px] text-white text-base rounded outline-none appearance-none focus-visible:outline-2 focus-visible:outline-[#0078d4] focus-visible:outline-offset-2"
 						data-testid={`${__for}-picker-button`}
 					>
 						<AriaColorSwatch
-							className="react-aria-ColorSwatch"
+							className="w-[30px] h-[30px] rounded shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)]"
 							color={value}
 						/>
 						<span>{label}</span>
 					</Button>
 					<Popover
 						placement="bottom start"
-						className="react-aria-Popover"
+						className="border border-[#373737] shadow-[0_8px_20px_rgba(0,0,0,0.1)] rounded-md bg-[#191919] text-white outline-none max-w-[250px] data-[entering]:animate-popover-slide data-[exiting]:animate-popover-slide-reverse data-[placement=top]:[--origin:translateY(8px)] data-[placement=bottom]:[--origin:translateY(-8px)] data-[placement=right]:[--origin:translateX(-8px)] data-[placement=left]:[--origin:translateX(8px)]"
 						data-testid={`${__for}-picker-popover`}
 					>
-						<Dialog className="color-picker-dialog">
+						<Dialog className="outline-none p-[15px] flex flex-col gap-2 min-w-[192px] max-h-full box-border overflow-auto">
 							<AriaColorArea
 								colorSpace="hsb"
 								xChannel="saturation"
 								yChannel="brightness"
-								className="react-aria-ColorArea"
+								className="w-[192px] h-[192px] rounded flex-shrink-0"
 								data-testid="picker-area"
 								onChange={handleColorChange}
 								value={value}
@@ -145,7 +116,7 @@ function ColorPicker({ label, __for, value }: ColorPickerProps): ReactNode {
 							>
 								<SliderOutput />
 								<SliderTrack>
-									<ColorThumb />
+									<ColorThumb className="top-2" />
 								</SliderTrack>
 							</AriaColorSlider>
 							<ColorField

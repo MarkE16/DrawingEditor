@@ -9,14 +9,13 @@ vi.mock("../../renderer/usePageContext", () => ({
 	usePageContext: () => ({ urlPathname: "/" }) // Mock the hook
 }));
 
-const preloadedState: CanvasState = {
+const preloadedState: Partial<CanvasState> = {
 	width: 500,
 	height: 500,
-	mode: "draw",
-	drawStrength: 5,
-	eraserStrength: 3,
+	mode: "brush",
+	strokeWidth: 5,
 	dpi: 1,
-	color: "hsla(0, 0%, 0%, 1)",
+	color: "#000000",
 	scale: 1,
 	position: { x: 0, y: 0 },
 	layers: [],
@@ -36,7 +35,7 @@ describe("DrawingToolbar functionality", () => {
 		expect(toolbar).toBeInTheDocument();
 	});
 
-	it("should be able to change draw strength", () => {
+	it("should be able to change stroke strength", () => {
 		// We need to change the mode to draw to be able to change the draw strength.
 
 		renderWithProviders(<DrawingToolbar />, { preloadedState });
@@ -60,7 +59,7 @@ describe("DrawingToolbar functionality", () => {
 		expect(value).toHaveTextContent("15");
 	});
 
-	it("should not go outside the min and max draw strength range", () => {
+	it("should not go outside the min and max stroke strength range", () => {
 		renderWithProviders(<DrawingToolbar />, { preloadedState });
 
 		const noActionsText = screen.queryByText(
@@ -80,63 +79,9 @@ describe("DrawingToolbar functionality", () => {
 
 		expect(value).toHaveTextContent("1");
 
-		// Change the value to 20
-		fireEvent.change(input, { target: { value: "20" } });
+		// Change the value to 101
+		fireEvent.change(input, { target: { value: "101" } });
 
-		expect(value).toHaveTextContent("15");
-	});
-
-	it("should be able to change eraser strength", () => {
-		// We need to change the mode to eraser to be able to change the eraser strength.
-		const newMockState: CanvasState = { ...preloadedState, mode: "erase" };
-
-		renderWithProviders(<DrawingToolbar />, {
-			preloadedState: newMockState
-		});
-
-		const noActionsText = screen.queryByText(
-			/Choose a different tool for actions./i
-		);
-
-		expect(noActionsText).not.toBeInTheDocument();
-
-		const input = screen.getByTestId("strength-range");
-		const value = screen.getByTestId("strength-value");
-
-		expect(input).toBeInTheDocument();
-		expect(value).toBeInTheDocument();
-
-		// It should be 3 by default
-		expect(value).toHaveTextContent("3");
-
-		// Change it to 10
-		fireEvent.change(input, { target: { value: "10" } });
-
-		expect(value).toHaveTextContent("10");
-	});
-
-	it("should not go outside the min and max of the erase strength range", () => {
-		// We need to change the mode to eraser to be able to change the eraser strength.
-		const newMockState: CanvasState = { ...preloadedState, mode: "erase" };
-
-		renderWithProviders(<DrawingToolbar />, {
-			preloadedState: newMockState
-		});
-
-		const input = screen.getByTestId("strength-range");
-		const value = screen.getByTestId("strength-value");
-
-		// It should be 3 by default
-		expect(value).toHaveTextContent("3");
-
-		// Change the value to 0
-		fireEvent.change(input, { target: { value: "0" } });
-
-		expect(value).toHaveTextContent("3");
-
-		// Change the value to 20
-		fireEvent.change(input, { target: { value: "20" } });
-
-		expect(value).toHaveTextContent("10");
+		expect(value).toHaveTextContent("100");
 	});
 });

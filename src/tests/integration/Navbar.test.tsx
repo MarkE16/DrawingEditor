@@ -11,26 +11,13 @@ import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Navbar from "../../components/Navbar/Navbar";
 import { renderWithProviders } from "../test-utils";
-import * as useLayerReferences from "../../state/hooks/useLayerReferences";
 
 describe("Navbar functionality", () => {
 	let originalRequestFullscreen: typeof HTMLElement.prototype.requestFullscreen;
 	let originalExitFullscreen: typeof document.exitFullscreen;
 	const fullscreenElementMock = vi.fn().mockReturnValue(null);
-	const canvas = document.createElement("canvas");
-	canvas.setAttribute("data-dpi", "1");
 
 	beforeAll(() => {
-		vi.spyOn(useLayerReferences, "default").mockReturnValue({
-			references: {
-				current: [canvas]
-			},
-			add: vi.fn(),
-			remove: vi.fn(),
-			setActiveIndex: vi.fn(),
-			getActiveLayer: vi.fn()
-		});
-
 		Object.defineProperty(document, "fullscreenElement", {
 			get: fullscreenElementMock,
 			configurable: true
@@ -86,7 +73,6 @@ describe("Navbar functionality", () => {
 
 	it("should save the file when clicking Save File from File menu", async () => {
 		renderWithProviders(<Navbar />);
-		const alertSpy = vi.spyOn(window, "alert");
 		const fileTab = screen.getByRole("menuitem", { name: "File" });
 
 		await userEvent.click(fileTab);
@@ -96,27 +82,17 @@ describe("Navbar functionality", () => {
 		await userEvent.click(saveFileOption);
 
 		await vi.waitFor(() => {
-			expect(alertSpy).toHaveBeenCalledWith("Saved!");
+			expect(screen.getByLabelText("saved-indicator")).toBeInTheDocument();
 		});
 	});
 
 	it("should show an error if failed to save", async () => {
-		vi.mocked(useLayerReferences.default).mockReturnValueOnce({
-			references: {
-				current: []
-			},
-			add: vi.fn(),
-			remove: vi.fn(),
-			setActiveIndex: vi.fn(),
-			getActiveLayer: vi.fn()
+		renderWithProviders(<Navbar />, {
+			preloadedState: { layers: [] }
 		});
 
-		renderWithProviders(<Navbar />);
-
 		const alertSpy = vi.spyOn(window, "alert");
-		const error = new Error(
-			"Cannot export canvas: no references found. This is a bug."
-		);
+		const error = new Error("No layers to save. This is a bug.");
 
 		const fileTab = screen.getByRole("menuitem", { name: "File" });
 
@@ -135,11 +111,10 @@ describe("Navbar functionality", () => {
 
 	it("should perform a save when using CTRL S", async () => {
 		renderWithProviders(<Navbar />);
-		const alertSpy = vi.spyOn(window, "alert");
 		fireEvent.keyDown(document, { key: "s", ctrlKey: true });
 
 		await vi.waitFor(() => {
-			expect(alertSpy).toHaveBeenCalledWith("Saved!");
+			expect(screen.getByLabelText("saved-indicator")).toBeInTheDocument();
 		});
 	});
 

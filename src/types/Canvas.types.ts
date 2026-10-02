@@ -3,30 +3,36 @@ import { v4 as uuidv4 } from "uuid";
 export type CanvasState = {
 	width: number;
 	height: number;
+	background: string;
 	mode: Mode;
 	shape: Shape;
+	shapeMode: "fill" | "stroke";
 	color: string;
-	drawStrength: number;
-	eraserStrength: number;
+	opacity: number;
+	strokeWidth: number;
 	layers: Layer[];
+	currentLayer: number;
 	scale: number;
 	dpi: number;
-	position: Coordinates;
+	position: Vector<2>;
 	referenceWindowEnabled: boolean;
 };
 
 export type Mode =
-	| "select"
-	| "draw"
-	| "erase"
+	| "brush"
+	| "eraser"
 	| "shapes"
 	| "text"
 	| "eye_drop"
 	| "zoom_in"
 	| "zoom_out"
 	| "move"
+	| "pan"
 	| "undo"
 	| "redo";
+
+export type RectProperties = Dimensions & Coordinates;
+
 export type Shape = "rectangle" | "circle" | "triangle";
 export type Coordinates = {
 	x: number;
@@ -51,7 +57,11 @@ export type Modes = ToolbarMode[];
 
 export type ResizePosition = "nw" | "n" | "ne" | "w" | "e" | "sw" | "s" | "se";
 
-export type CanvasElementType = Shape | "text";
+export type CanvasElementType =
+	| Shape
+	| "text"
+	| "image"
+	| Extract<Mode, "brush" | "eraser">;
 
 export type FontProperties = {
 	size: number;
@@ -59,18 +69,31 @@ export type FontProperties = {
 	content: string;
 };
 
+type BuildTuple<
+	L extends number,
+	T extends unknown[] = []
+> = T["length"] extends L ? T : BuildTuple<L, [...T, T[number]]>;
+
+export type Vector<N extends number> = BuildTuple<N, [number]>;
+export type CanvasElementPath = Vector<2>;
+
 export type CanvasElement = {
 	x: number;
 	y: number;
 	width: number;
 	height: number;
 	type: CanvasElementType;
-	fill: string;
-	stroke: string;
+	color: string;
 	id: string;
 	text?: FontProperties;
+	path: CanvasElementPath[];
 	layerId: string;
-	focused: boolean;
+	drawType: "fill" | "stroke";
+	strokeWidth: number;
+	opacity: number;
+	// Inverted means if the current y coordinate is less
+	// than the initial y coordinate (the coordinate when the mouse was pressed)
+	inverted: boolean;
 	// More properties later...
 };
 
@@ -80,11 +103,6 @@ export type Dimensions = {
 };
 
 export type SavedCanvasProperties = {
-	layers: {
-		name: string;
-		image: Blob;
-		position: number;
-		id: string;
-	}[];
+	layers: Layer[];
 	elements: Omit<CanvasElement, "focused">[];
 };

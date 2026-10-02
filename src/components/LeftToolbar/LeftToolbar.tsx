@@ -6,9 +6,6 @@ import useStore from "@/state/hooks/useStore";
 // Types
 import type { ReactNode } from "react";
 
-// Styles
-import "./LeftToolbar.styles.css";
-
 // Components
 import ToolbarButton from "@/components/ToolbarButton/ToolbarButton";
 
@@ -30,8 +27,9 @@ function LeftToolbar(): ReactNode {
 		<aside
 			data-testid="left-toolbar-container"
 			id="left-toolbar-container"
+			className="flex flex-col w-[50px] h-full overflow-auto bg-[#242424] border border-[#383737] justify-between"
 		>
-			{renderedModes}
+			<div>{renderedModes}</div>
 		</aside>
 	);
 }

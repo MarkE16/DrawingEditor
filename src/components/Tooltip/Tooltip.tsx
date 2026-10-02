@@ -7,12 +7,10 @@ import {
 	Content as TooltipContent,
 	Arrow as TooltipArrow
 } from "@radix-ui/react-tooltip";
-
-// Styles
-import "./Tooltip.styles.css";
+import cn from "@/lib/tailwind-utils";
 
 // Types
-import { type FC, type ReactNode } from "react";
+import type { FC, ReactNode } from "react";
 
 type TooltipProps = {
 	text: string;
@@ -27,6 +25,21 @@ const Tooltip: FC<TooltipProps> = ({
 	position = "top",
 	arrow = true
 }) => {
+	const animationClass = () => {
+		switch (position) {
+			case "top":
+				return "animate-tooltip-slide-down";
+			case "right":
+				return "animate-tooltip-slide-left";
+			case "bottom":
+				return "animate-tooltip-slide-up";
+			case "left":
+				return "animate-tooltip-slide-right";
+			default:
+				return "animate-tooltip-slide-down";
+		}
+	};
+
 	return (
 		<TooltipProvider>
 			<TooltipRoot delayDuration={100}>
@@ -34,11 +47,17 @@ const Tooltip: FC<TooltipProps> = ({
 				<TooltipPortal>
 					<TooltipContent
 						side={position}
-						className="TooltipContent"
+						className={cn(
+							"z-[999] rounded px-2 py-1 text-sm leading-none text-white bg-[#3e3e3e] border border-[#242424]",
+							"shadow-[0_10px_38px_-10px_rgba(22,23,24,0.35),0_10px_20px_-15px_rgba(22,23,24,0.2)]",
+							"will-change-[transform,opacity]",
+							"select-none",
+							animationClass()
+						)}
 						sideOffset={5}
 					>
 						{text}
-						{arrow && <TooltipArrow className="TooltipArrow" />}
+						{arrow && <TooltipArrow className="fill-[#3e3e3e]" />}
 					</TooltipContent>
 				</TooltipPortal>
 			</TooltipRoot>

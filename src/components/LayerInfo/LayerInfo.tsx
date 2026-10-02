@@ -1,8 +1,7 @@
 // Lib
 import { useState, memo } from "react";
-import clsx from "clsx";
+import cn from "@/lib/tailwind-utils";
 import useStore from "@/state/hooks/useStore";
-import useLayerReferences from "@/state/hooks/useLayerReferences";
 import { useShallow } from "zustand/react/shallow";
 import LayersStore from "@/state/stores/LayersStore";
 
@@ -18,18 +17,16 @@ import Checkmark from "@/components/icons/Checkmark/Checkmark";
 import type { ReactNode } from "react";
 import type { Layer } from "@/types";
 
-// Styles
-import "./LayerInfo.styles.css";
-
 // Components
 import LayerPreview from "@/components/LayerPreview/LayerPreview";
 import Tooltip from "@/components/Tooltip/Tooltip";
+import ElementsStore from "@/state/stores/ElementsStore";
+import { redrawCanvas } from "@/lib/utils";
 
 type LayerInfoProps = Readonly<
 	Layer & {
 		canMoveUp: boolean;
 		canMoveDown: boolean;
-		idx: number;
 	}
 >;
 
@@ -41,8 +38,7 @@ function LayerInfo({
 	active,
 	hidden,
 	canMoveUp,
-	canMoveDown,
-	idx
+	canMoveDown
 }: LayerInfoProps): ReactNode {
 	const {
 		toggleLayer,
@@ -63,7 +59,6 @@ function LayerInfo({
 			deleteElement: state.deleteElement
 		}))
 	);
-	const { setActiveIndex } = useLayerReferences();
 	const [isEditing, setIsEditing] = useState<boolean>(false);
 	const [editedName, setEditedName] = useState<string>(name);
 	const editingTooltipText =
@@ -73,17 +68,14 @@ function LayerInfo({
 				? "Done"
 				: "Rename";
 
-	const cn = clsx("layer-info-container", {
-		active,
-		hidden
-	});
-
 	const onToggle = () => {
 		toggleLayer(id);
-		setActiveIndex(idx);
 	};
 
-	const onToggleVisibility = () => toggleVisibility(id);
+	const onToggleVisibility = () => {
+		toggleVisibility(id);
+		redrawCanvas(true);
+	};
 
 	const onDelete = () => {
 		if (!window.confirm("Are you sure you want to delete " + name + "?"))
@@ -93,7 +85,9 @@ function LayerInfo({
 
 		LayersStore.removeLayer([id]);
 
-		deleteElement((element) => element.layerId === id);
+		const deletedIds = deleteElement((element) => element.layerId === id);
+
+		ElementsStore.removeElement(deletedIds);
 	};
 
 	const onMoveLayer = (dir: "up" | "down") => {
@@ -102,6 +96,7 @@ function LayerInfo({
 		} else {
 			moveLayerDown(id);
 		}
+		redrawCanvas(true);
 	};
 
 	const onRename = () => {
@@ -124,7 +119,14 @@ function LayerInfo({
 	return (
 		<label
 			htmlFor={"layer-" + id}
-			className={cn}
+			className={cn(
+				"flex items-center w-full max-w-full h-[2.6rem] py-[0.2rem] px-[0.5rem] whitespace-nowrap border border-[rgb(56,55,55)] last:rounded-b-[5px]",
+				"group",
+				{
+					"bg-accent": active,
+					"bg-[rgb(36,36,36)]": !active
+				}
+			)}
 			aria-label="Layer Info"
 		>
 			<input
@@ -133,14 +135,15 @@ function LayerInfo({
 				name="layer"
 				checked={active}
 				onChange={onToggle}
+				className="hidden"
 			/>
-			<div className="layer-info-mover">
+			<div className="flex flex-col">
 				<Tooltip
 					text="Move Up"
 					position="left"
 				>
 					<button
-						className="layer-up"
+						className="block opacity-100 text-base m-0 p-0 bg-transparent rounded-full disabled:opacity-50 hover:bg-[rgba(255,255,255,0.1)]"
 						aria-label="Move Layer Up"
 						onClick={() => onMoveLayer("up")}
 						disabled={!canMoveUp}
@@ -153,7 +156,7 @@ function LayerInfo({
 					position="left"
 				>
 					<button
-						className="layer-down"
+						className="block opacity-100 text-base m-0 p-0 bg-transparent rounded-full disabled:opacity-50 hover:bg-[rgba(255,255,255,0.1)]"
 						onClick={() => onMoveLayer("down")}
 						aria-label="Move Layer Down"
 						disabled={!canMoveDown}
@@ -165,13 +168,14 @@ function LayerInfo({
 
 			<MemoizedLayerPreview id={id} />
 
-			<div className="layer-info-actions">
+			<div className="flex flex-row items-center justify-between w-full min-w-0">
 				{isEditing ? (
 					<input
 						type="text"
 						aria-label="Edit Layer Name"
 						placeholder={name}
 						value={editedName}
+						className="mx-[5px] outline-none w-full border-none border-b border-b-[#c1c1c1] bg-transparent focus:border-b-white placeholder:text-[rgb(218,218,218)]"
 						/**
 						We add this keydown event so that we prevent the keydown event attached on the
 						window object from firing (for listening to keyboard shortcuts related to tools)
@@ -192,9 +196,9 @@ function LayerInfo({
 						onBlur={onRename}
 					/>
 				) : (
-					<div className="layer-info-text">
+					<div className="flex flex-col mx-[10px] w-full overflow-hidden">
 						<span
-							className="layer-info-name"
+							className="text-white font-bold text-[1em] whitespace-nowrap overflow-hidden text-ellipsis w-full leading-[1.2]"
 							aria-label="Layer Name"
 							onDoubleClick={onRename}
 						>
@@ -205,7 +209,12 @@ function LayerInfo({
 				<div>
 					<Tooltip text={editingTooltipText}>
 						<button
-							className="layer-rename"
+							className={cn(
+								"hidden bg-transparent text-lg py-0 px-[0.2em] border-none rounded-full transition-opacity disabled:opacity-50 group-hover:inline group-focus:inline hover:bg-[rgba(255,255,255,0.1)]",
+								{
+									block: isEditing
+								}
+							)}
 							onClick={onRename}
 							disabled={!editedName.length}
 							aria-label="Rename Layer"
@@ -219,7 +228,7 @@ function LayerInfo({
 							{(canMoveUp || canMoveDown) && (
 								<Tooltip text="Delete">
 									<button
-										className="layer-delete"
+										className="hidden bg-transparent text-lg py-0 px-[0.2em] border-none rounded-full transition-opacity disabled:opacity-50 group-hover:inline group-focus:inline hover:bg-[rgba(255,255,255,0.1)]"
 										onClick={onDelete}
 										aria-label="Delete Layer"
 									>
@@ -235,6 +244,7 @@ function LayerInfo({
 									role="switch"
 									aria-checked={hidden}
 									aria-label="Toggle Layer Visibility"
+									className="hidden bg-transparent text-lg py-0 px-[0.2em] border-none rounded-full transition-opacity disabled:opacity-50 group-hover:inline group-focus:inline hover:bg-[rgba(255,255,255,0.1)]"
 								>
 									<Eye lineCross={hidden} />
 								</button>

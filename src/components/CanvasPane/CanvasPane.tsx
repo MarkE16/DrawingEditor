@@ -1,27 +1,20 @@
 // Lib
 import { useRef, useEffect, useState, memo } from "react";
-import useLayerReferences from "@/state/hooks/useLayerReferences";
-import useWindowDimensions from "@/state/hooks/useWindowDimesions";
 import useStore from "@/state/hooks/useStore";
 import useStoreSubscription from "@/state/hooks/useStoreSubscription";
 import { useShallow } from "zustand/react/shallow";
+import { redrawCanvas, updateVector2 } from "@/lib/utils";
 
 // Components
 import DrawingToolbar from "@/components/DrawingToolbar/DrawingToolbar";
 import Canvas from "@/components/Canvas/Canvas";
 import CanvasPointerMarker from "@/components/CanvasPointerMarker/CanvasPointerMarker";
-import CanvasPointerSelection from "@/components/CanvasPointerSelection/CanvasPointerSelection";
-import CanvasInteractiveElement from "@/components/CanvasInteractiveElement/CanvasInteractiveElement";
 import ScaleIndicator from "@/components/ScaleIndicator/ScaleIndicator";
 
 // Types
 import type { ReactNode } from "react";
-import type { Coordinates } from "@/types";
+import type { Vector } from "@/types";
 
-// Styles
-import "./CanvasPane.styles.css";
-
-const MemoizedCanvasInteractiveElement = memo(CanvasInteractiveElement);
 const MemoizedCanvas = memo(Canvas);
 const MemoizedDrawingToolbar = memo(DrawingToolbar);
 const MemoizedScaleIndicator = memo(ScaleIndicator);
@@ -32,224 +25,120 @@ function CanvasPane(): ReactNode {
 		scale,
 		changeX,
 		changeY,
-		increaseScale,
-		decreaseScale,
-		elements,
 		changeElementProperties,
-		copyElement,
-		pasteElement,
-		createElement
+		createElement,
+		getActiveLayer,
+		performZoom,
+		pushHistory
 	} = useStore(
 		useShallow((state) => ({
 			mode: state.mode,
 			scale: state.scale,
 			changeX: state.changeX,
 			changeY: state.changeY,
-			increaseScale: state.increaseScale,
-			decreaseScale: state.decreaseScale,
-			elements: state.elements,
 			changeElementProperties: state.changeElementProperties,
-			copyElement: state.copyElement,
-			pasteElement: state.pasteElement,
-			createElement: state.createElement
+			createElement: state.createElement,
+			getActiveLayer: state.getActiveLayer,
+			performZoom: state.performZoom,
+			pushHistory: state.pushHistory
 		}))
 	);
 	const currentShape = useStoreSubscription((state) => state.shape);
 	const currentColor = useStoreSubscription((state) => state.color);
-	const canvasSpaceRef = useRef<HTMLDivElement>(null);
-	const clientPosition = useRef<Coordinates>({ x: 0, y: 0 });
-	const isSelecting = useRef<boolean>(false);
-	const createdShapeId = useRef<string | null>(null);
-	const [shiftKey, setShiftKey] = useState<boolean>(false);
-	const [ctrlKey, setCtrlKey] = useState<boolean>(false);
-	const [isGrabbing, setIsGrabbing] = useState<boolean>(false);
-	const { getActiveLayer } = useLayerReferences();
-	const dimensions = useWindowDimensions();
-
-	const canMove = mode === "move" || shiftKey;
-	const isMoving = canMove && isGrabbing;
+	const clientPosition = useRef<Vector<2>>([0, 0]);
+	const startMovePosition = useRef<Vector<2>>([0, 0]);
+	const canvasRef = useRef<HTMLCanvasElement | null>(null);
+	const [loading, setLoading] = useState<boolean>(true);
 
 	// Effect is getting ugly... Might be a good idea to split
 	// this into multiple effects.
 	useEffect(() => {
-		const canvasSpace = canvasSpaceRef.current;
+		const canvasSpace = canvasRef.current;
 		if (!canvasSpace) return;
 
+		const isPanning = mode === "pan";
+		const isMoving = mode === "move";
 		const isClickingOnSpace = (e: MouseEvent) =>
 			e.target === canvasSpace || canvasSpace.contains(e.target as Node);
 
 		function handleMouseDown(e: MouseEvent) {
-			if (e.buttons !== 1 || !canvasSpace) return;
+			if (e.buttons !== 1) return;
 
-			clientPosition.current = { x: e.clientX, y: e.clientY };
-			const isOnCanvas = isClickingOnSpace(e);
-
-			if (!isOnCanvas) return;
-
-			if (
-				mode === "text" &&
-				!shiftKey &&
-				!document.activeElement?.classList.contains("element") &&
-				!document.activeElement?.classList.contains("grid") &&
-				!document.activeElement?.classList.contains("handle")
-			) {
-				const activeLayer = getActiveLayer();
-
-				if (!activeLayer) throw new Error("No active layer found");
-
-				createElement("text", {
-					x: e.clientX,
-					y: e.clientY,
-					width: 100,
-					height: 30,
-					focused: true,
-					text: {
-						size: 25,
-						family: "Times New Roman",
-						content: "Text"
-					},
-					layerId: activeLayer.id
-				});
-				return;
-			}
-
-			if (mode === "shapes" && ctrlKey) {
-				const activeLayer = getActiveLayer();
-
-				const id = createElement(currentShape.current, {
-					x: e.clientX,
-					y: e.clientY,
-					width: 18,
-					height: 18,
-					focused: false,
-					layerId: activeLayer.id,
-					fill: currentColor.current
-				});
-				createdShapeId.current = id;
-			}
-
-			setIsGrabbing(isOnCanvas);
+			clientPosition.current = [e.clientX, e.clientY];
+			startMovePosition.current = [e.clientX, e.clientY];
 		}
 
 		function handleMouseMove(e: MouseEvent) {
-			if (e.buttons !== 1 || !isGrabbing || !canvasSpace) return;
+			if (e.buttons !== 1) return;
 
+			const canvas = canvasRef.current;
 			const layer = getActiveLayer();
+			if (!canvas || layer.hidden) return;
 
-			let dx = e.clientX - clientPosition.current.x;
-			let dy = e.clientY - clientPosition.current.y;
+			const initX = clientPosition.current[0];
+			const initY = clientPosition.current[1];
+			let dx = e.clientX - initX;
+			let dy = e.clientY - initY;
 
-			const {
-				left: sLeft,
-				width: sWidth,
-				height: sHeight,
-				top: sTop
-			} = canvasSpace.getBoundingClientRect();
+			if (isPanning) {
+				// TODO: Have to revisit the calculation to know how the canvas is considered off screen.
+				// As a temporary solution, a button in the left toolbar pane is added to reset the canvas view.
+				// const { left, top } = isCanvasOffscreen(canvas, dx, dy);
 
-			if (canMove && isGrabbing) {
-				const {
-					left: lLeft,
-					top: lTop,
-					width: lWidth,
-					height: lHeight
-				} = layer.getBoundingClientRect();
-
-				// Check if the layer is outside the canvas space.
-				// If it is, we don't want to move it.
-				// Note: We add 20 so that we can still see the layer when it's almost outside the canvas space.
-				if (lLeft + dx <= -lWidth + sLeft + 20 || lLeft + dx >= sWidth + 20) {
-					dx = 0; // Set to 0 so that the layer doesn't move.
-				}
-
-				if (lTop + dy <= -lHeight + sTop + 20 || lTop + dy >= sHeight + 20) {
-					dy = 0; // Set to 0 so that the layer doesn't move.
-				}
+				// if (left) dx = 0;
+				// if (top) dy = 0;
 
 				// Apply the changes.
 				changeX(dx);
 				changeY(dy);
+				redrawCanvas();
+			} else if (isMoving) {
+				// Move the shapes for the current layer.
 
-				changeElementProperties(
-					(state) => ({
-						...state,
-						x: state.x + dx,
-						y: state.y + dy
-					}),
-					() => true // Update on each element
-				);
-			} else if (mode === "shapes") {
-				// Required for shapes to have a minimum size.
-				// It is also set in `ShapeElement` in the resizing
-				// logic. If you change it here, make sure to change
-				// it there as well.
-				const MIN_SIZE = 18;
-				const pointerX = e.clientX;
-				const pointerY = e.clientY;
+				// divide the dx and dy by the scale to get the correct
+				// 'mouse feel' like movement.
+				dx /= scale;
+				dy /= scale;
 
 				changeElementProperties(
 					(state) => {
-						let newWidth = Math.max(MIN_SIZE, state.width + dx);
-						let newHeight = Math.max(MIN_SIZE, state.height + dy);
-
-						if (pointerX - MIN_SIZE < state.x) {
-							newWidth = MIN_SIZE;
+						if (state.type === "brush" || state.type === "eraser") {
+							return {
+								...state,
+								path: state.path.map((point) => [point[0] + dx, point[1] + dy])
+							};
+						} else {
+							return {
+								...state,
+								x: state.x + dx,
+								y: state.y + dy
+							};
 						}
-
-						if (pointerY - MIN_SIZE < state.y) {
-							newHeight = MIN_SIZE;
-						}
-
-						return {
-							...state,
-							width: newWidth,
-							height: newHeight
-						};
 					},
-					(element) => element.id === createdShapeId.current!
+					(element) => element.layerId === layer.id
 				);
+				redrawCanvas();
 			}
-			clientPosition.current = { x: e.clientX, y: e.clientY };
+			updateVector2(clientPosition.current, e.clientX, e.clientY);
 		}
 
-		function handleMouseUp() {
-			// clientPosition.current = { x: 0, y: 0 };
-			setIsGrabbing(false);
+		function handleMouseUp(e: MouseEvent) {
+			if (isMoving && isClickingOnSpace(e)) {
+				const initX = startMovePosition.current[0];
+				const initY = startMovePosition.current[1];
+				const dx = e.clientX - initX; // total change in x
+				const dy = e.clientY - initY; // total change in y
 
-			if (mode === "shapes") {
-				createdShapeId.current = null;
+				const layer = getActiveLayer();
 
-				const ev = new CustomEvent("imageupdate", {
-					detail: {
-						layer: getActiveLayer()
+				pushHistory({
+					type: "move_element",
+					properties: {
+						layerId: layer.id,
+						dx,
+						dy
 					}
 				});
-
-				document.dispatchEvent(ev);
-			}
-		}
-
-		function handleKeyDown(e: KeyboardEvent) {
-			setShiftKey(e.shiftKey);
-			setCtrlKey(e.ctrlKey);
-
-			if (e.key === "+") {
-				e.preventDefault();
-				increaseScale();
-			} else if (e.key === "_") {
-				e.preventDefault();
-				decreaseScale();
-			}
-
-			if (e.type === "keyup") {
-				return;
-			}
-
-			if (e.key === "c" && e.ctrlKey && !e.repeat) {
-				// We're copying elements here
-				copyElement((element) => element.focused);
-			} else if (e.key === "v" && e.ctrlKey && !e.repeat) {
-				// We're pasting elements here
-				pasteElement();
 			}
 		}
 
@@ -257,42 +146,32 @@ function CanvasPane(): ReactNode {
 			if (!canvasSpace) return;
 
 			if (e instanceof WheelEvent) {
-				if (!e.shiftKey) return;
-
-				if (e.deltaY > 0) {
-					decreaseScale();
-				} else {
-					increaseScale();
+				if (e.ctrlKey) {
+					// Ctrl key means we are zooming.
+					e.preventDefault();
+					performZoom(e.clientX, e.clientY, e.deltaY / 10);
+				} else if (e.shiftKey) {
+					// Shift key means we are panning horizontally.
+					changeX(-e.deltaY);
 				}
 				// Handle the click event
 			} else if (e instanceof MouseEvent) {
 				if (!isClickingOnSpace(e)) return;
 
 				// Shift key means we are moving. We don't want to zoom in this case.
-				if (e.buttons === 0 && !e.shiftKey) {
+				if (
+					e.buttons === 0 &&
+					!e.shiftKey &&
+					(mode === "zoom_in" || mode === "zoom_out")
+				) {
 					// Left click
-					if (mode === "zoom_in") {
-						increaseScale();
-					} else if (mode === "zoom_out") {
-						decreaseScale();
-					} else {
-						return; // We don't want to zoom if the mode is not zoom
-					}
+					let factor = 25;
+					if (mode === "zoom_in") factor *= -1;
+					performZoom(e.clientX, e.clientY, factor);
 				}
 			}
-		}
 
-		function onWindowResize() {
-			const { changeInWidth, changeInHeight } = dimensions.current;
-
-			changeElementProperties(
-				(state) => ({
-					...state,
-					x: state.x + changeInWidth,
-					y: state.y + changeInHeight
-				}),
-				() => true // Update on all elements
-			);
+			redrawCanvas();
 		}
 
 		document.addEventListener("mousedown", handleMouseDown);
@@ -301,83 +180,49 @@ function CanvasPane(): ReactNode {
 		document.addEventListener("wheel", handleZoom);
 		document.addEventListener("click", handleZoom);
 
-		// Handle shift key press
-		document.addEventListener("keydown", handleKeyDown);
-		document.addEventListener("keyup", handleKeyDown);
-
-		window.addEventListener("resize", onWindowResize);
 		return () => {
 			document.removeEventListener("mousedown", handleMouseDown);
 			document.removeEventListener("mousemove", handleMouseMove);
 			document.removeEventListener("mouseup", handleMouseUp);
 			document.removeEventListener("wheel", handleZoom);
 			document.removeEventListener("click", handleZoom);
-
-			document.removeEventListener("keydown", handleKeyDown);
-			document.removeEventListener("keyup", handleKeyDown);
-			window.removeEventListener("resize", onWindowResize);
 		};
 	}, [
 		mode,
-		isGrabbing,
-		canMove,
 		changeElementProperties,
-		dimensions,
-		copyElement,
-		pasteElement,
 		createElement,
-		increaseScale,
-		decreaseScale,
 		changeX,
 		changeY,
 		getActiveLayer,
-		shiftKey,
-		ctrlKey,
 		currentShape,
-		currentColor
+		currentColor,
+		pushHistory,
+		performZoom,
+		scale
 	]);
 
 	return (
 		<div
-			id="canvas-pane"
+			className="flex relative justify-center items-center flex-[3] w-full overflow-hidden [&:not(:hover)>#canvas-pointer-marker]:opacity-0 [&:not(:hover)>#canvas-pointer-marker]:transition-opacity [&:not(:hover)>#canvas-pointer-marker]:duration-200 [&:hover>#canvas-pointer-marker]:absolute [&:hover>#canvas-pointer-marker]:border-[3px] [&:hover>#canvas-pointer-marker]:border-black [&:hover>#canvas-pointer-marker]:outline [&:hover>#canvas-pointer-marker]:outline-[1px] [&:hover>#canvas-pointer-marker]:outline-white [&:hover>#canvas-pointer-marker]:outline-offset-[-3px] [&:hover>#canvas-pointer-marker]:pointer-events-none"
 			data-testid="canvas-pane"
 		>
-			{(mode === "draw" || mode == "erase") && (
-				<CanvasPointerMarker
-					canvasSpaceReference={canvasSpaceRef}
-					shiftKey={shiftKey}
-				/>
-			)}
-			{(mode === "select" || (mode === "shapes" && !ctrlKey)) && !isMoving && (
-				<CanvasPointerSelection
-					canvasSpaceReference={canvasSpaceRef}
-					isSelecting={isSelecting}
-				/>
+			{(mode === "brush" || mode == "eraser") && (
+				<CanvasPointerMarker canvasSpaceReference={canvasRef} />
 			)}
 			<MemoizedDrawingToolbar />
 
-			{elements.map((element) => (
-				<MemoizedCanvasInteractiveElement
-					key={element.id}
-					canvasSpaceReference={canvasSpaceRef}
-					isSelecting={isSelecting}
-					isCreatingElement={createdShapeId.current !== null}
-					clientPosition={clientPosition}
-					{...element}
-				/>
-			))}
-			<div
-				id="canvas-container"
-				data-testid="canvas-container"
-				ref={canvasSpaceRef}
-				data-moving={canMove}
-				data-grabbing={canMove && isGrabbing}
-				data-mode={mode}
-			>
-				<MemoizedCanvas isGrabbing={isMoving} />
-			</div>
+			<MemoizedCanvas
+				setLoading={setLoading}
+				ref={canvasRef}
+			/>
 
-			<MemoizedScaleIndicator scale={scale} />
+			{!loading ? (
+				<MemoizedScaleIndicator scale={scale} />
+			) : (
+				<div className="absolute bottom-2 left-2 p-1.5 bg-slate-600 rounded">
+					Loading...
+				</div>
+			)}
 		</div>
 	);
 }

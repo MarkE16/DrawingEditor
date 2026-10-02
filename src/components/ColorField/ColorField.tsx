@@ -5,9 +5,6 @@ import {
 	Input
 } from "react-aria-components";
 
-// Styles
-import "./ColorField.styles.css";
-
 // Types
 import type {
 	ChangeEvent,
@@ -31,14 +28,14 @@ function ColorField({
 	const stopPropagation = (e: KeyboardEvent) => e.stopPropagation();
 	return (
 		<AriaColorField
-			className="react-aria-ColorField"
+			className="flex flex-col text-[var(--text-color)]"
 			{...props}
 		>
 			<Label>{label}</Label>
 			<Input
 				type="text"
 				value={value}
-				className="react-aria-Input"
+				className="p-[0.286rem] m-0 border border-solid border-[#000000] rounded-md bg-[var(--field-background)] text-[1.143rem] text-[var(--field-text-color)] w-full max-w-[12ch] box-border data-[focused]:outline-2 data-[focused]:outline-solid data-[focused]:outline-[var(--focus-ring-color)] data-[focused]:outline-offset-[-1px]"
 				onChange={onChange}
 				onKeyDown={stopPropagation}
 			/>

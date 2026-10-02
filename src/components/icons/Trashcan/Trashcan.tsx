@@ -1,5 +1,11 @@
 import { Trash2 as LucideTrash2 } from "lucide-react";
+import type { ComponentProps } from "react";
 
-const Trashcan = () => <LucideTrash2 size="1em" />;
+const Trashcan = (props: ComponentProps<"svg">) => (
+	<LucideTrash2
+		size="1em"
+		{...props}
+	/>
+);
 
 export default Trashcan;

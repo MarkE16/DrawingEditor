@@ -1,8 +1,7 @@
 import { Layer } from "@/types";
 import BaseStore from "./BaseStore";
 
-type LayerProperties = Pick<Layer, "name" | "id"> & {
-	image: Blob;
+type LayerStoreObject = Layer & {
 	position: number;
 };
 
@@ -18,8 +17,8 @@ export default class LayersStore extends BaseStore {
 	 * @param layers Layers to add to the store.
 	 * @returns Promise of void
 	 */
-	public static addLayers(layers: LayerProperties[]) {
-		return this.add(layers);
+	public static upsertLayers(layers: LayerStoreObject[]) {
+		return this.add<LayerStoreObject>(layers);
 	}
 
 	/**
@@ -28,7 +27,7 @@ export default class LayersStore extends BaseStore {
 	 * @returns A singular layer or undefined if not found
 	 */
 	public static getLayer(id: string) {
-		return this.get<LayerProperties>(id);
+		return this.get<LayerStoreObject>(id);
 	}
 
 	/**
@@ -36,7 +35,7 @@ export default class LayersStore extends BaseStore {
 	 * @returns The entries
 	 */
 	public static getLayers() {
-		return this.get<LayerProperties>();
+		return this.get<LayerStoreObject>();
 	}
 
 	/**

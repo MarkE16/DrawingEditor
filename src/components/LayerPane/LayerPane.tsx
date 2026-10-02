@@ -9,9 +9,6 @@ import Plus from "@/components/icons/Plus/Plus";
 // Types
 import type { ReactNode } from "react";
 
-// Styles
-import "./LayerPane.styles.css";
-
 // Components
 import LayerInfo from "@/components/LayerInfo/LayerInfo";
 import ColorWheel from "@/components/ColorWheel/ColorWheel";
@@ -36,6 +33,8 @@ function LayerPane(): ReactNode {
 			createLayer();
 		}
 	};
+	const newLayerButtonCss =
+		"inline-flex justify-center p-1 text-lg bg-[rgb(36,36,36)] hover:bg-accent rounded-t-[5px] border border-[rgb(56,55,55)] disabled:bg-[#242424] disabled:text-gray-500";
 
 	const newLayerButton =
 		totalLayers >= MAX_LAYERS ? (
@@ -46,7 +45,7 @@ function LayerPane(): ReactNode {
 			>
 				<button
 					aria-label="Create Layer"
-					id="new-layer-button"
+					className={newLayerButtonCss}
 					disabled={true}
 				>
 					<Plus />
@@ -55,7 +54,7 @@ function LayerPane(): ReactNode {
 		) : (
 			<button
 				aria-label="Create Layer"
-				id="new-layer-button"
+				className={newLayerButtonCss}
 				disabled={false}
 				onClick={onNewLayer}
 			>
@@ -64,12 +63,12 @@ function LayerPane(): ReactNode {
 		);
 
 	return (
-		<aside id="layer-manager-container">
+		<aside className="flex flex-col h-full w-[225px] p-[0.5em] bg-[rgb(36,36,36)] border border-[rgb(56,55,55)]">
 			<MemoizedColorWheel />
 
 			{newLayerButton}
 			<div
-				id="layer-list"
+				className="h-full overflow-y-auto"
 				aria-label="Layer List"
 			>
 				{layers.map((layer, i) => (
@@ -78,7 +77,6 @@ function LayerPane(): ReactNode {
 						key={layer.id}
 						canMoveUp={i > 0}
 						canMoveDown={i < totalLayers - 1}
-						idx={i}
 					/>
 				))}
 			</div>

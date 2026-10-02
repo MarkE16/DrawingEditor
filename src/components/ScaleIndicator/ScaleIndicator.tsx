@@ -1,5 +1,6 @@
 // Lib
 import { useRef, useState, useEffect } from "react";
+import cn from "@/lib/tailwind-utils";
 
 // Types
 import type { ReactNode } from "react";
@@ -28,18 +29,11 @@ function ScaleIndicator({ scale }: ScaleIndicatorProps): ReactNode {
 
 	return (
 		<div
-			style={{
-				position: "absolute",
-				left: 10,
-				bottom: 10,
-				padding: "5px",
-				zIndex: 1,
-				backgroundColor: "black",
-				borderRadius: "5px",
-				opacity: visible ? 1 : 0.2,
-				transition: "opacity 150ms",
-				pointerEvents: "none"
-			}}
+			className={cn(
+				"absolute left-2.5 bottom-2.5 p-1.5 z-10 bg-black rounded-md",
+				"transition-opacity duration-150 pointer-events-none",
+				{ "opacity-100": visible, "opacity-20": !visible }
+			)}
 		>
 			{scale.toFixed(1)}x
 		</div>

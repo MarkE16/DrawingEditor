@@ -1,5 +1,6 @@
-import { useContext, useRef, useEffect } from "react";
-import { StoreContext } from "../../components/StoreContext/StoreContext";
+import { useRef } from "react";
+import useStoreEffect from "./useStoreEffect";
+import useStoreContext from "./useStoreContext";
 
 import type { SliceStores } from "../../types";
 import type { RefObject } from "react";
@@ -14,23 +15,13 @@ import type { RefObject } from "react";
 function useStoreSubscription<T>(
 	selector: (state: SliceStores) => T
 ): RefObject<T> {
-	const store = useContext(StoreContext);
-
-	if (!store) {
-		throw new Error(
-			"useStoreSubscription must be used within a StoreProvider."
-		);
-	}
+	const store = useStoreContext();
 
 	const state = useRef(selector(store.getState()));
 
-	useEffect(() => {
-		const unsubscribe = store.subscribe(selector, (newState) => {
-			state.current = newState;
-		});
-
-		return unsubscribe;
-	}, [store, selector]);
+	useStoreEffect(selector, (newState) => {
+		state.current = newState;
+	});
 
 	return state;
 }
